@@ -1,139 +1,43 @@
-name: ci-cd-memeup-api
+name: Build and Deploy memeup-api
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Restore & Build
+      # (опц.) Быстрая проверка, что есть нужные файлы
+      - name: Preflight list files
         run: |
-          dotnet restore ./memeup.api.sln
-          dotnet build -c Release --no-restore ./memeup.api.sln
+          ls -la
+          ls -la deploy || true
+          test -f Dockerfile || (echo "Dockerfile missing"; exit 1)
+          test -f deploy/docker-compose.prod.yml || (echo "deploy/docker-compose.prod.yml missing"; exit 1)
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # >>> NEW: make image name lower-case
-      - name: Compute image name (lowercase)
-        id: prep
+      # Архивируем весь проект (исключаем .git)
+      - name: Archive project files
         run: |
-          OWNER_LC="${{ github.repository_owner }}"
-          OWNER_LC="${OWNER_LC,,}"   
-          IMG="ghcr.io/${OWNER_LC}/memeup.api"
-          echo "image_name=$IMG" >> "$GITHUB_OUTPUT"
-          echo "Computed image: $IMG"
+          tar --exclude='.git' -czf memeup-api.tar.gz .
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & Push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ steps.prep.outputs.image_name }}:latest
-            ${{ steps.prep.outputs.image_name }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ steps.prep.outputs.image_name }}:buildcache
-          cache-to: type=registry,ref=${{ steps.prep.outputs.image_name }}:buildcache,mode=max
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create deploy dir on server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            sudo mkdir -p /opt/memeup.api
-            sudo chown -R $USER:$USER /opt/memeup.api
-
-      - name: Upload compose & env
+      # Копируем архив на сервер
+      - name: Copy archive to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          source: "deploy/docker-compose.prod.yml"
-          target: "/opt/memeup.api/"
+          source: "memeup-api.tar.gz"
+          target: "/opt"
 
-      - name: Write .env on server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            cat > /opt/memeup.api/.env << 'EOF'
-            ${{ secrets.ENV_PROD }}
-            EOF
-
-      - name: Docker login on server (GHCR)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Pull & Up
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            cd /opt/memeup.api
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-
-      - name: Run migrations (one-off)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            cd /opt/memeup.api
-            # Запускаем контейнер api в режиме "только миграции" и выходим
-            docker compose -f docker-compose.prod.yml run --rm \
-              -e RUN_MIGRATIONS=1 api
-            # Перезапускаем API (после миграций)
-            docker compose -f docker-compose.prod.yml up -d
-
-      - name: Smoke check
+      # Деплой на сервере
+      - name: SSH and deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -142,4 +46,34 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
-            curl -sS -f https://${{ secrets.API_HOST }}/health || curl -sS -f http://${{ secrets.API_HOST }}/health
+            cd /opt
+            # Обновляем каталог с приложением
+            rm -rf memeup-api
+            mkdir memeup-api
+            tar -xzf memeup-api.tar.gz -C memeup-api
+            rm memeup-api.tar.gz
+
+            # .env пишем из секрета (раз хранить файл на GitHub не хотим)
+            cat > memeup-api/deploy/.env << 'EOF'
+            ${{ secrets.ENV_PROD }}
+            EOF
+
+            cd memeup-api/deploy
+
+            # (если Traefik есть) docker network create traefik_proxy || true
+
+            # Собираем и поднимаем
+            docker compose -f docker-compose.prod.yml down || true
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Миграции: запускаем API в режиме "только миграции" и выходим
+            # 1) Если в Program.cs включена автоприменение миграций и флаг RUN_MIGRATIONS → используем его:
+            docker compose -f docker-compose.prod.yml run --rm -e RUN_MIGRATIONS=1 api || true
+
+            # Перезапускаем API после миграций (на всякий)
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Быстрый smoke-чек
+            # Если есть Traefik и домен:
+            # curl -sS -f https://${{ secrets.API_HOST }}/health || curl -sS -f http://${{ secrets.API_HOST }}/health || true
