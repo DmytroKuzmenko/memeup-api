@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build
+bin/
+obj/
+
+# Rider/VSCode
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env & local
+.env
+uploads/
