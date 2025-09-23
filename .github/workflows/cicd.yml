@@ -23,7 +23,7 @@ jobs:
       # Архивируем весь проект (исключаем .git)
       - name: Archive project files
         run: |
-          tar --exclude='.git' -czf memeup-api.tar.gz .
+          git archive --format=tar.gz -o memeup-api.tar.gz HEAD
 
       # Копируем архив на сервер
       - name: Copy archive to server
