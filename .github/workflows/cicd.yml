@@ -60,7 +60,7 @@ jobs:
 
             cd memeup-api/deploy
 
-            # (если Traefik есть) docker network create traefik_proxy || true
+            docker network create traefik_proxy || true
 
             # Собираем и поднимаем
             docker compose -f docker-compose.prod.yml down || true
