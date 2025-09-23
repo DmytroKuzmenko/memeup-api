@@ -15,6 +15,11 @@ services:
 
   api:
     image: ghcr.io/${GHCR_OWNER:-your-gh-username}/memeup.api:latest
+    # или, если деплоишь архивом и билдом на сервере — замени на:
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
+    #   target: final
     restart: unless-stopped
     depends_on:
       - db
@@ -22,41 +27,37 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://0.0.0.0:8080
 
-      # Строка подключения к внутренней БД
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-
-      # CORS
       Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
 
-      # JWT
       JWT__Issuer: ${JWT__Issuer}
       JWT__Audience: ${JWT__Audience}
       JWT__Key: ${JWT__Key}
       JWT__LifetimeMinutes: ${JWT__LifetimeMinutes:-60}
 
-      # сидинг админа
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
     volumes:
       - uploads_data:/app/uploads
+
     networks:
       - internal
-      - traefik_proxy
+      - web                # <-- ВАЖНО: та же сеть, где Traefik
 
     labels:
-      # === Traefik (пример, подставь свой домен) ===
       - "traefik.enable=true"
+      # API_HOST должен быть задан в .env (см. ниже)
       - "traefik.http.routers.memeup-api.rule=Host(`${API_HOST}`)"
       - "traefik.http.routers.memeup-api.entrypoints=websecure"
-      - "traefik.http.routers.memeup-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.memeup-api.tls.certresolver=myresolver"   
       - "traefik.http.services.memeup-api.loadbalancer.server.port=8080"
 
 networks:
   internal:
     driver: bridge
-  traefik_proxy:
-    external: true
+  web:
+    external: true          # <-- должна существовать и у Traefik
 
 volumes:
   db_data:
