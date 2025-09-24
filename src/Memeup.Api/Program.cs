@@ -10,6 +10,7 @@ using Memeup.Api.Data;
 using Memeup.Api.Domain.Auth;
 using Microsoft.Extensions.FileProviders;
 using HealthChecks.NpgSql;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
