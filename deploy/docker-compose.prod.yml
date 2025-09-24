@@ -44,10 +44,14 @@ services:
       - web
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=web"                    
       - "traefik.http.routers.memeup-api.rule=Host(`${API_HOST}`)"
       - "traefik.http.routers.memeup-api.entrypoints=websecure"
       - "traefik.http.routers.memeup-api.tls.certresolver=myresolver"
       - "traefik.http.services.memeup-api.loadbalancer.server.port=8080"
+      # ВРЕМЕННО: HTTP-роутер для диагностики (уберёшь потом)
+      - "traefik.http.routers.memeup-api-http.rule=Host(`${API_HOST}`)"
+      - "traefik.http.routers.memeup-api-http.entrypoints=web"
 
 networks:
   internal:
