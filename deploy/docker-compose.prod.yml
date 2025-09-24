@@ -14,12 +14,11 @@ services:
       - internal
 
   api:
-    image: ghcr.io/${GHCR_OWNER:-your-gh-username}/memeup-api:latest
-    # или, если деплоишь архивом и билдом на сервере — замени на:
-    # build:
-    #   context: ..
-    #   dockerfile: Dockerfile
-    #   target: final
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: final
+    image: memeup-api:prod
     restart: unless-stopped
     depends_on:
       - db
@@ -40,24 +39,21 @@ services:
 
     volumes:
       - uploads_data:/app/uploads
-
     networks:
       - internal
-      - web                # <-- ВАЖНО: та же сеть, где Traefik
-
+      - web
     labels:
       - "traefik.enable=true"
-      # API_HOST должен быть задан в .env (см. ниже)
       - "traefik.http.routers.memeup-api.rule=Host(`${API_HOST}`)"
       - "traefik.http.routers.memeup-api.entrypoints=websecure"
-      - "traefik.http.routers.memeup-api.tls.certresolver=myresolver"   
+      - "traefik.http.routers.memeup-api.tls.certresolver=myresolver"
       - "traefik.http.services.memeup-api.loadbalancer.server.port=8080"
 
 networks:
   internal:
     driver: bridge
   web:
-    external: true          # <-- должна существовать и у Traefik
+    external: true
 
 volumes:
   db_data:
