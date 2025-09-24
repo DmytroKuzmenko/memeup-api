@@ -14,7 +14,7 @@ services:
       - internal
 
   api:
-    image: ghcr.io/${GHCR_OWNER:-your-gh-username}/memeup.api:latest
+    image: ghcr.io/${GHCR_OWNER:-your-gh-username}/memeup-api:latest
     # или, если деплоишь архивом и билдом на сервере — замени на:
     # build:
     #   context: ..
