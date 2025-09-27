@@ -10,6 +10,7 @@ using Memeup.Api.Data;
 using Memeup.Api.Domain.Auth;
 using Microsoft.Extensions.FileProviders;
 using HealthChecks.NpgSql;
+using Memeup.Api.Features.Sections;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +71,7 @@ builder.Services.AddAuthorization();
 
 // ----- Controllers + Swagger -----
 builder.Services.AddControllers();
+builder.Services.AddAutoMapper(typeof(SectionMappingProfile).Assembly);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
