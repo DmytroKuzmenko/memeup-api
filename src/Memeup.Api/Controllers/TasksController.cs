@@ -66,7 +66,7 @@ public class TasksController : ControllerBase
 
         var entity = _mapper.Map<TaskItem>(dto);
         entity.Options.Clear();
-        entity.Options.AddRange(MapOptions(dto.Options));
+        entity.Options.AddRange(TaskOptionMapping.MapOptions(dto.Options));
         _db.Tasks.Add(entity);
         await _db.SaveChangesAsync();
 
@@ -97,7 +97,7 @@ public class TasksController : ControllerBase
         entity.ExplanationText = dto.ExplanationText;
 
         entity.Options.Clear();
-        entity.Options.AddRange(MapOptions(dto.Options));
+        entity.Options.AddRange(TaskOptionMapping.MapOptions(dto.Options));
 
         await _db.SaveChangesAsync();
         return Ok(_mapper.Map<TaskDto>(entity));
