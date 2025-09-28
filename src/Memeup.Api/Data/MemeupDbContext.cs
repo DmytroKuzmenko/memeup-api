@@ -15,13 +15,31 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<Section> Sections => Set<Section>();
     public DbSet<Level> Levels => Set<Level>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<TaskOption> TaskOptions => Set<TaskOption>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
 
-        // настройки Section/Level/Task как были (оставляем)
-        // ...
+        b.Entity<TaskItem>(task =>
+        {
+            task.HasMany(t => t.Options)
+                .WithOne(o => o.Task)
+                .HasForeignKey(o => o.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<TaskOption>(option =>
+        {
+            option.Property(o => o.Label)
+                .IsRequired()
+                .HasMaxLength(2000);
+
+            option.Property(o => o.ImageUrl)
+                .HasMaxLength(1024);
+
+            option.HasIndex(o => new { o.TaskId, o.OrderIndex });
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
