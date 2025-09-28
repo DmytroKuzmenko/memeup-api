@@ -46,6 +46,7 @@ public class TaskCreateDto
 
     [StringLength(1024)]
     public string? ImageUrl { get; set; }
+    public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
 
     public int OrderIndex { get; set; } = 0;
 
@@ -74,6 +75,8 @@ public class TaskUpdateDto
     [StringLength(1024)]
     public string? ImageUrl { get; set; }
 
+    public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
+    
     public int OrderIndex { get; set; } = 0;
 
     public int? TimeLimitSec { get; set; }
