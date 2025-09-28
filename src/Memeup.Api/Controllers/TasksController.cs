@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
@@ -45,7 +48,9 @@ public class TasksController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<TaskDto>> GetById(Guid id)
     {
-        var entity = await _db.Tasks.FindAsync(id);
+        var entity = await _db.Tasks
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (entity == null) return NotFound();
         return Ok(_mapper.Map<TaskDto>(entity));
     }
@@ -60,6 +65,8 @@ public class TasksController : ControllerBase
         if (!levelExists) return BadRequest(new { message = "Level not found" });
 
         var entity = _mapper.Map<TaskItem>(dto);
+        entity.Options.Clear();
+        entity.Options.AddRange(MapOptions(dto.Options));
         _db.Tasks.Add(entity);
         await _db.SaveChangesAsync();
 
@@ -72,7 +79,9 @@ public class TasksController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
     {
-        var entity = await _db.Tasks.FindAsync(id);
+        var entity = await _db.Tasks
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (entity == null) return NotFound();
 
         entity.Status = (PublishStatus)dto.Status;
@@ -86,6 +95,9 @@ public class TasksController : ControllerBase
         entity.PointsAttempt2 = dto.PointsAttempt2;
         entity.PointsAttempt3 = dto.PointsAttempt3;
         entity.ExplanationText = dto.ExplanationText;
+
+        entity.Options.Clear();
+        entity.Options.AddRange(MapOptions(dto.Options));
 
         await _db.SaveChangesAsync();
         return Ok(_mapper.Map<TaskDto>(entity));
@@ -102,5 +114,23 @@ public class TasksController : ControllerBase
         _db.Tasks.Remove(entity);
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+}
+
+static class TaskOptionMapping
+{
+    public static List<TaskOption> MapOptions(TaskOptionDto[] options)
+    {
+        var safeOptions = options ?? Array.Empty<TaskOptionDto>();
+
+        return safeOptions
+            .Select((option, index) => new TaskOption
+            {
+                Label = option.Label,
+                IsCorrect = option.IsCorrect,
+                ImageUrl = option.ImageUrl,
+                OrderIndex = index
+            })
+            .ToList();
     }
 }
