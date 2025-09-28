@@ -11,6 +11,7 @@ public class TaskDto
     public int Type { get; set; }            // TaskType as int
     public string? HeaderText { get; set; }
     public string? ImageUrl { get; set; }
+    public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
     public int OrderIndex { get; set; }
     public int? TimeLimitSec { get; set; }
     public int PointsAttempt1 { get; set; }
@@ -19,6 +20,13 @@ public class TaskDto
     public string? ExplanationText { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public class TaskOptionDto
+{
+    public string Label { get; set; } = string.Empty;
+    public bool IsCorrect { get; set; }
+    public string? ImageUrl { get; set; }
 }
 
 public class TaskCreateDto
