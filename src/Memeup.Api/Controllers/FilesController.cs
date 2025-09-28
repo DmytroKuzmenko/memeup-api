@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,13 @@ public class FilesController : ControllerBase
 
     private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
 
+     private readonly IWebHostEnvironment _environment;
+
+    public FilesController(IWebHostEnvironment environment)
+    {
+        _environment = environment;
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin")] // как и просили — write закрыт
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
@@ -37,7 +45,7 @@ public class FilesController : ControllerBase
             return BadRequest(new { error = "unsupported file type" });
 
         // генерим имя и сохраняем
-        var uploadsRoot = Path.Combine(AppContext.BaseDirectory, "uploads");
+         var uploadsRoot = Path.Combine(_environment.ContentRootPath, "uploads");
         Directory.CreateDirectory(uploadsRoot);
 
         var fileName = $"{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
