@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Memeup.Api.Domain.Abstractions;
 using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Levels;
@@ -23,6 +22,4 @@ public class TaskItem : BaseEntity
     public int PointsAttempt3 { get; set; } = 0;
 
     public string? ExplanationText { get; set; }
-
-    public List<TaskOption> Options { get; set; } = new();
 }

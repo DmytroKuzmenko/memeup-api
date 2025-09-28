@@ -228,37 +228,6 @@ namespace Memeup.Api.Migrations
                     b.ToTable("Tasks");
                 });
 
-            modelBuilder.Entity("Memeup.Api.Domain.Tasks.TaskOption", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
-
-                    b.Property<bool>("IsCorrect")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TaskId", "OrderIndex");
-
-                    b.ToTable("TaskOptions");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -409,18 +378,6 @@ namespace Memeup.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Level");
-                    b.Navigation("Options");
-                });
-
-            modelBuilder.Entity("Memeup.Api.Domain.Tasks.TaskOption", b =>
-                {
-                    b.HasOne("Memeup.Api.Domain.Tasks.TaskItem", "Task")
-                        .WithMany("Options")
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Task");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
