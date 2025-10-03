@@ -112,10 +112,6 @@ namespace Memeup.Api.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
@@ -153,10 +149,6 @@ namespace Memeup.Api.Migrations
 
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsRequired()
-                        .HasColumnType("bytea");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -204,10 +196,6 @@ namespace Memeup.Api.Migrations
 
                     b.Property<int>("PointsAttempt3")
                         .HasColumnType("integer");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsRequired()
-                        .HasColumnType("bytea");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

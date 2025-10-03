@@ -7,7 +7,6 @@ public class TaskDto
     public Guid Id { get; set; }
     public Guid LevelId { get; set; }
     public int Status { get; set; }          // PublishStatus as int
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public string? InternalName { get; set; }
     public int Type { get; set; }            // TaskType as int
     public string? HeaderText { get; set; }
@@ -64,9 +63,6 @@ public class TaskUpdateDto
 {
     /// <summary>0 = Draft, 1 = Published</summary>
     [Range(0, 1)] public int Status { get; set; } = 0;
-
-    [Required]
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     public string? InternalName { get; set; }
 

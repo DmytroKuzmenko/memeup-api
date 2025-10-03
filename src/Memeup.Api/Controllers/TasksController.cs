@@ -1,7 +1,6 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Memeup.Api.Data;
@@ -99,59 +98,7 @@ public class TasksController : ControllerBase
         entity.PointsAttempt3 = dto.PointsAttempt3;
         entity.ExplanationText = dto.ExplanationText;
 
-        var entityEntry = _db.Entry(entity);
-        var concurrencyProperty = entityEntry.Property(e => e.RowVersion);
-
-        var originalRowVersion = dto.RowVersion;
-        if (originalRowVersion is null || originalRowVersion.Length == 0)
-        {
-            if (concurrencyProperty.OriginalValue is byte[] trackedOriginal && trackedOriginal.Length > 0)
-            {
-                originalRowVersion = trackedOriginal;
-            }
-            else if (entity.RowVersion is { Length: > 0 })
-            {
-                originalRowVersion = entity.RowVersion;
-            }
-            else
-            {
-                var databaseValues = await entityEntry.GetDatabaseValuesAsync();
-                if (databaseValues?[nameof(TaskItem.RowVersion)] is byte[] dbRowVersion && dbRowVersion.Length > 0)
-                {
-                    originalRowVersion = dbRowVersion;
-                }
-            }
-        }
-
-        concurrencyProperty.OriginalValue = originalRowVersion ?? Array.Empty<byte>();
-
-        try
-        {
-            await _db.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var current = await _db.Tasks
-                .AsNoTracking()
-                .Include(t => t.Options)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (current is null)
-            {
-                return NotFound();
-            }
-
-            var problem = new ProblemDetails
-            {
-                Title = "Task update conflict",
-                Detail = "The task was updated by another user. Reload the task and try again.",
-                Status = StatusCodes.Status409Conflict
-            };
-
-            problem.Extensions["task"] = _mapper.Map<TaskDto>(current);
-
-            return Conflict(problem);
-        }
+        await _db.SaveChangesAsync();
 
         return Ok(_mapper.Map<TaskDto>(entity));
     }

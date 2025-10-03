@@ -14,7 +14,6 @@ public class TaskMappingProfile : Profile
         CreateMap<DomainTask, TaskDto>()
             .ForMember(d => d.Status, m => m.MapFrom(s => (int)s.Status))
             .ForMember(d => d.Type, m => m.MapFrom(s => (int)s.Type))
-            .ForMember(d => d.RowVersion, m => m.MapFrom(s => s.RowVersion))
             .ForMember(d => d.Options, m => m.MapFrom(s => s.Options));
 
         CreateMap<TaskCreateDto, DomainTask>()
@@ -25,7 +24,6 @@ public class TaskMappingProfile : Profile
         CreateMap<TaskUpdateDto, DomainTask>()
             .ForMember(d => d.Status, m => m.MapFrom(s => (PublishStatus)s.Status))
             .ForMember(d => d.Type, m => m.MapFrom(s => (TaskType)s.Type))
-            .ForMember(d => d.RowVersion, m => m.MapFrom(s => s.RowVersion))
             .ForMember(d => d.Options, m => m.MapFrom(s => s.Options ?? Array.Empty<TaskOptionDto>()));
     }
 }
