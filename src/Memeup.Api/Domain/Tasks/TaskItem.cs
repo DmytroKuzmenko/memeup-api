@@ -14,6 +14,7 @@ public class TaskItem : BaseEntity
 
     public string? HeaderText { get; set; }
     public string? ImageUrl { get; set; }
+    public ICollection<TaskOption> Options { get; set; } = new List<TaskOption>();
     public int OrderIndex { get; set; } = 0;
     public int? TimeLimitSec { get; set; }
 

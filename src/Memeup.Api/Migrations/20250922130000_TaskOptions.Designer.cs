@@ -3,6 +3,7 @@ using System;
 using Memeup.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memeup.Api.Migrations
 {
     [DbContext(typeof(MemeupDbContext))]
-    partial class MemeupDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250922130000_TaskOptions")]
+    partial class TaskOptions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -112,6 +115,10 @@ namespace Memeup.Api.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
@@ -149,6 +156,10 @@ namespace Memeup.Api.Migrations
 
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsRequired()
+                        .HasColumnType("bytea");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -196,6 +207,10 @@ namespace Memeup.Api.Migrations
 
                     b.Property<int>("PointsAttempt3")
                         .HasColumnType("integer");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsRequired()
+                        .HasColumnType("bytea");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

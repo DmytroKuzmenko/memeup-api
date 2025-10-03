@@ -20,8 +20,29 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     {
         base.OnModelCreating(b);
 
-        // настройки Section/Level/Task как были (оставляем)
-        // ...
+        var taskBuilder = b.Entity<TaskItem>();
+
+        taskBuilder.OwnsMany(t => t.Options, opt =>
+        {
+            opt.ToTable("TaskOptions");
+
+            opt.WithOwner().HasForeignKey("TaskItemId");
+
+            opt.HasKey("Id");
+            opt.Property<Guid>("Id")
+                .ValueGeneratedOnAdd();
+
+            opt.Property(o => o.Label)
+                .HasMaxLength(1024)
+                .IsRequired();
+
+            opt.Property(o => o.IsCorrect);
+
+            opt.Property(o => o.ImageUrl)
+                .HasMaxLength(1024);
+        });
+
+        taskBuilder.Navigation(t => t.Options).AutoInclude();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
