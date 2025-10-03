@@ -224,4 +224,84 @@ public class TasksControllerTests
             Assert.NotEqual(Convert.ToBase64String(createdDto.RowVersion), Convert.ToBase64String(current.RowVersion));
         }
     }
+
+    [Fact]
+    public async Task Update_Succeeds_WhenRowVersionMissing()
+    {
+        await using var connection = new SqliteConnection("Filename=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<MemeupDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var mapper = new MapperConfiguration(cfg => cfg.AddProfile(new TaskMappingProfile()))
+            .CreateMapper();
+
+        var section = new Section
+        {
+            Id = Guid.NewGuid(),
+            Name = "Section"
+        };
+        var level = new Level
+        {
+            Id = Guid.NewGuid(),
+            Name = "Level",
+            SectionId = section.Id,
+            Section = section
+        };
+
+        await using (var setup = new MemeupDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            setup.Sections.Add(section);
+            setup.Levels.Add(level);
+            await setup.SaveChangesAsync();
+        }
+
+        TaskDto createdDto;
+        await using (var context = new MemeupDbContext(options))
+        {
+            var controller = new TasksController(context, mapper);
+            var createDto = new TaskCreateDto
+            {
+                LevelId = level.Id,
+                Status = 0,
+                Type = 3,
+                InternalName = "initial",
+                Options =
+                [
+                    new TaskOptionDto { Label = "Option A", IsCorrect = true },
+                    new TaskOptionDto { Label = "Option B", IsCorrect = false }
+                ]
+            };
+
+            var createResult = await controller.Create(createDto);
+            var created = Assert.IsType<CreatedAtActionResult>(createResult.Result);
+            createdDto = Assert.IsType<TaskDto>(created.Value);
+        }
+
+        await using (var context = new MemeupDbContext(options))
+        {
+            var controller = new TasksController(context, mapper);
+            var updateDto = new TaskUpdateDto
+            {
+                Status = 0,
+                RowVersion = Array.Empty<byte>(),
+                Type = 3,
+                InternalName = "updated",
+                Options =
+                [
+                    new TaskOptionDto { Label = "Updated", IsCorrect = true }
+                ]
+            };
+
+            var result = await controller.Update(createdDto.Id, updateDto);
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var updatedDto = Assert.IsType<TaskDto>(ok.Value);
+
+            Assert.NotEmpty(updatedDto.RowVersion);
+            Assert.Equal("updated", updatedDto.InternalName);
+        }
+    }
 }

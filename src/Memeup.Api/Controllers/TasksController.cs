@@ -99,10 +99,13 @@ public class TasksController : ControllerBase
         entity.PointsAttempt3 = dto.PointsAttempt3;
         entity.ExplanationText = dto.ExplanationText;
 
-        if (dto.RowVersion?.Length > 0)
+        var originalRowVersion = dto.RowVersion;
+        if (originalRowVersion is null || originalRowVersion.Length == 0)
         {
-            _db.Entry(entity).Property(e => e.RowVersion).OriginalValue = dto.RowVersion;
+            originalRowVersion = entity.RowVersion ?? Array.Empty<byte>();
         }
+
+        _db.Entry(entity).Property(e => e.RowVersion).OriginalValue = originalRowVersion;
 
         try
         {
