@@ -1,6 +1,7 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Memeup.Api.Data;
@@ -98,7 +99,39 @@ public class TasksController : ControllerBase
         entity.PointsAttempt3 = dto.PointsAttempt3;
         entity.ExplanationText = dto.ExplanationText;
 
-        await _db.SaveChangesAsync();
+        if (dto.RowVersion?.Length > 0)
+        {
+            _db.Entry(entity).Property(e => e.RowVersion).OriginalValue = dto.RowVersion;
+        }
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var current = await _db.Tasks
+                .AsNoTracking()
+                .Include(t => t.Options)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (current is null)
+            {
+                return NotFound();
+            }
+
+            var problem = new ProblemDetails
+            {
+                Title = "Task update conflict",
+                Detail = "The task was updated by another user. Reload the task and try again.",
+                Status = StatusCodes.Status409Conflict
+            };
+
+            problem.Extensions["task"] = _mapper.Map<TaskDto>(current);
+
+            return Conflict(problem);
+        }
+
         return Ok(_mapper.Map<TaskDto>(entity));
     }
 
