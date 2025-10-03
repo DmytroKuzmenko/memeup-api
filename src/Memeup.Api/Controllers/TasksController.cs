@@ -45,7 +45,9 @@ public class TasksController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<TaskDto>> GetById(Guid id)
     {
-        var entity = await _db.Tasks.FindAsync(id);
+        var entity = await _db.Tasks
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (entity == null) return NotFound();
         return Ok(_mapper.Map<TaskDto>(entity));
     }
@@ -72,7 +74,9 @@ public class TasksController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
     {
-        var entity = await _db.Tasks.FindAsync(id);
+        var entity = await _db.Tasks
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Id == id);
         if (entity == null) return NotFound();
 
         entity.Status = (PublishStatus)dto.Status;
@@ -80,6 +84,13 @@ public class TasksController : ControllerBase
         entity.Type = (TaskType)dto.Type;
         entity.HeaderText = dto.HeaderText;
         entity.ImageUrl = dto.ImageUrl;
+        entity.Options ??= new List<TaskOption>();
+        entity.Options.Clear();
+        var optionDtos = dto.Options ?? Array.Empty<TaskOptionDto>();
+        foreach (var option in _mapper.Map<IEnumerable<TaskOption>>(optionDtos))
+        {
+            entity.Options.Add(option);
+        }
         entity.OrderIndex = dto.OrderIndex;
         entity.TimeLimitSec = dto.TimeLimitSec;
         entity.PointsAttempt1 = dto.PointsAttempt1;
