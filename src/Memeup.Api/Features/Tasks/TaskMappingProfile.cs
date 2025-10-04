@@ -1,3 +1,4 @@
+using System;
 using AutoMapper;
 using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Tasks;
@@ -9,7 +10,10 @@ public class TaskMappingProfile : Profile
 {
     public TaskMappingProfile()
     {
-        CreateMap<TaskOption, TaskOptionDto>().ReverseMap();
+        CreateMap<TaskOption, TaskOptionDto>();
+
+        CreateMap<TaskOptionDto, TaskOption>()
+            .ForMember(d => d.Id, m => m.MapFrom(s => s.Id ?? Guid.NewGuid()));
 
         CreateMap<DomainTask, TaskDto>()
             .ForMember(d => d.Status, m => m.MapFrom(s => (int)s.Status))

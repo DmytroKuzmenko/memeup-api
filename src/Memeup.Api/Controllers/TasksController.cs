@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
@@ -86,19 +89,42 @@ public class TasksController : ControllerBase
         entity.HeaderText = dto.HeaderText;
         entity.ImageUrl = dto.ImageUrl;
 
-        var existingOptions = entity.Options?.ToList() ?? new List<TaskOption>();
-        foreach (var option in existingOptions)
+        var optionDtos = dto.Options ?? Array.Empty<TaskOptionDto>();
+
+        var existingById = entity.Options.ToDictionary(o => o.Id);
+        var incomingIds = optionDtos
+            .Where(o => o.Id.HasValue)
+            .Select(o => o.Id!.Value)
+            .ToHashSet();
+
+        var toRemove = entity.Options
+            .Where(o => !incomingIds.Contains(o.Id))
+            .ToList();
+
+        foreach (var option in toRemove)
         {
-            _db.Entry(option).State = EntityState.Deleted;
+            entity.Options.Remove(option);
         }
 
-        entity.Options ??= new List<TaskOption>();
-        entity.Options.Clear();
-        var optionDtos = dto.Options ?? Array.Empty<TaskOptionDto>();
-        foreach (var option in _mapper.Map<IEnumerable<TaskOption>>(optionDtos))
+        foreach (var optionDto in optionDtos)
         {
-            entity.Options.Add(option);
+            if (optionDto.Id.HasValue && existingById.TryGetValue(optionDto.Id.Value, out var existing))
+            {
+                existing.Label = optionDto.Label;
+                existing.IsCorrect = optionDto.IsCorrect;
+                existing.ImageUrl = optionDto.ImageUrl;
+                continue;
+            }
+
+            entity.Options.Add(new TaskOption
+            {
+                Id = optionDto.Id ?? Guid.NewGuid(),
+                Label = optionDto.Label,
+                IsCorrect = optionDto.IsCorrect,
+                ImageUrl = optionDto.ImageUrl,
+            });
         }
+
         entity.OrderIndex = dto.OrderIndex;
         entity.TimeLimitSec = dto.TimeLimitSec;
         entity.PointsAttempt1 = dto.PointsAttempt1;

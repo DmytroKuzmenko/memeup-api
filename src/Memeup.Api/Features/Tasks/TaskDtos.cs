@@ -24,6 +24,7 @@ public class TaskDto
 
 public class TaskOptionDto
 {
+    public Guid? Id { get; set; }
     public string Label { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
     public string? ImageUrl { get; set; }

@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +82,12 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
             {
                 entry.CurrentValues["CreatedAt"] = now;
             }
+        }
+
+        var hasRowVersion = entry.Metadata.FindProperty("RowVersion") is not null;
+        if (hasRowVersion)
+        {
+            entry.CurrentValues["RowVersion"] = Guid.NewGuid().ToByteArray();
         }
     }
 }
