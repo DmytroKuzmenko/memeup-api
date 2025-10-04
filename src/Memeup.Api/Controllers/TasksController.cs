@@ -3,6 +3,7 @@ using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Memeup.Api.Data;
 using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Tasks;
@@ -84,6 +85,13 @@ public class TasksController : ControllerBase
         entity.Type = (TaskType)dto.Type;
         entity.HeaderText = dto.HeaderText;
         entity.ImageUrl = dto.ImageUrl;
+
+        var existingOptions = entity.Options?.ToList() ?? new List<TaskOption>();
+        foreach (var option in existingOptions)
+        {
+            _db.Entry(option).State = EntityState.Deleted;
+        }
+
         entity.Options ??= new List<TaskOption>();
         entity.Options.Clear();
         var optionDtos = dto.Options ?? Array.Empty<TaskOptionDto>();
