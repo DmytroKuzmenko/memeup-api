@@ -6,6 +6,7 @@ using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Memeup.Api.Data;
 using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Tasks;
