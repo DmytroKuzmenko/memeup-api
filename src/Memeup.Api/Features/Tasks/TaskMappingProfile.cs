@@ -13,7 +13,9 @@ public class TaskMappingProfile : Profile
         CreateMap<TaskOption, TaskOptionDto>();
 
         CreateMap<TaskOptionDto, TaskOption>()
-            .ForMember(d => d.Id, m => m.MapFrom(s => s.Id ?? Guid.NewGuid()));
+            .ForMember(
+                d => d.Id,
+                m => m.MapFrom(s => s.Id is { } value && value != Guid.Empty ? value : Guid.NewGuid()));
 
         CreateMap<DomainTask, TaskDto>()
             .ForMember(d => d.Status, m => m.MapFrom(s => (int)s.Status))
