@@ -18,33 +18,39 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
     protected override void OnModelCreating(ModelBuilder b)
+{
+    base.OnModelCreating(b);
+
+    var taskEntity = b.Entity<TaskItem>();
+
+    taskEntity.OwnsMany(t => t.Options, owned =>
     {
-        base.OnModelCreating(b);
+        owned.ToTable("TaskOptions");
 
-        var taskBuilder = b.Entity<TaskItem>();
+        // FK к владельцу
+        owned.WithOwner()
+             .HasForeignKey("TaskItemId");
 
-        taskBuilder.OwnsMany(t => t.Options, opt =>
-        {
-            opt.ToTable("TaskOptions");
+        // Ключ зависимой
+        owned.HasKey(o => o.Id);
 
-            opt.WithOwner().HasForeignKey("TaskItemId");
+        // Генерация Id на клиенте допустима (мы задаём Guid.NewGuid() в коде)
+        // ValueGeneratedOnAdd оставляем — EF не будет конфликтовать.
+        owned.Property(o => o.Id)
+             .ValueGeneratedOnAdd();
 
-            opt.HasKey(o => o.Id);
-            opt.Property(o => o.Id)
-                .ValueGeneratedOnAdd();
+        owned.Property(o => o.Label)
+             .HasMaxLength(1024)
+             .IsRequired();
 
-            opt.Property(o => o.Label)
-                .HasMaxLength(1024)
-                .IsRequired();
+        owned.Property(o => o.IsCorrect);
 
-            opt.Property(o => o.IsCorrect);
+        owned.Property(o => o.ImageUrl)
+             .HasMaxLength(1024);
+    });
 
-            opt.Property(o => o.ImageUrl)
-                .HasMaxLength(1024);
-        });
-
-        taskBuilder.Navigation(t => t.Options).AutoInclude();
-    }
+    taskEntity.Navigation(t => t.Options).AutoInclude();
+}    
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

@@ -14,6 +14,10 @@ using Memeup.Api.Features.Tasks;
 
 namespace Memeup.Api.Controllers;
 
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+
 [ApiController]
 [Route("api/[controller]")]
 public class TasksController : ControllerBase
@@ -73,77 +77,117 @@ public class TasksController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, result);
     }
 
-    // PUT /api/tasks/{id}  (Admin)
-    [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
+
+
+  [HttpPut("{id:guid}")]
+[Authorize(Roles = "Admin")]
+public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
+{
+    // Нормализация опций (Guid.Empty => null)
+    var incoming = (dto.Options ?? Array.Empty<TaskOptionDto>())
+        .Select(o => new
+        {
+            Id = (o.Id.HasValue && o.Id.Value != Guid.Empty) ? o.Id : null,
+            o.Label,
+            o.IsCorrect,
+            o.ImageUrl
+        })
+        .ToList();
+
+    var strategy = _db.Database.CreateExecutionStrategy();
+
+    return await strategy.ExecuteAsync(async () =>
     {
+        // ===== Фаза 1: сохраняем только скалярные поля Task =====
+        var task = await _db.Tasks.AsTracking().FirstOrDefaultAsync(t => t.Id == id);
+        if (task == null) return (ActionResult<TaskDto>)NotFound();
+
+        task.Status = (PublishStatus)dto.Status;
+        task.InternalName = dto.InternalName;
+        task.Type = (TaskType)dto.Type;
+        task.HeaderText = dto.HeaderText;
+        task.ImageUrl = dto.ImageUrl;
+        task.OrderIndex = dto.OrderIndex;
+        task.TimeLimitSec = dto.TimeLimitSec;
+        task.PointsAttempt1 = dto.PointsAttempt1;
+        task.PointsAttempt2 = dto.PointsAttempt2;
+        task.PointsAttempt3 = dto.PointsAttempt3;
+        task.ExplanationText = dto.ExplanationText;
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return (ActionResult<TaskDto>)Conflict("Конфликт обновления Task: данные были изменены или удалены. Обновите и повторите.");
+        }
+
+        // ===== Фаза 2: работаем ТОЛЬКО с Options, не трогая владельца =====
+        // Загружаем владельца с коллекцией
         var entity = await _db.Tasks
             .Include(t => t.Options)
             .FirstOrDefaultAsync(t => t.Id == id);
-        if (entity == null) return NotFound();
+        if (entity == null) return (ActionResult<TaskDto>)NotFound();
 
-        entity.Status = (PublishStatus)dto.Status;
-        entity.InternalName = dto.InternalName;
-        entity.Type = (TaskType)dto.Type;
-        entity.HeaderText = dto.HeaderText;
-        entity.ImageUrl = dto.ImageUrl;
+        entity.Options ??= new List<TaskOption>();
 
-        var normalizedOptions = (dto.Options ?? Array.Empty<TaskOptionDto>())
-            .Select(o => new
-            {
-                Dto = o,
-                Id = o.Id is { } value && value != Guid.Empty ? value : (Guid?)null
-            })
-            .ToList();
+        // КЛЮЧЕВОЕ: запрещаем EF апдейтить владельца
+        _db.Entry(entity).State = EntityState.Unchanged;
 
-        var existingById = entity.Options.ToDictionary(o => o.Id);
-        var incomingIds = normalizedOptions
-            .Where(o => o.Id.HasValue)
-            .Select(o => o.Id!.Value)
-            .ToHashSet();
+        // Индексы существующих по Id
+        var existingById = entity.Options.ToDictionary(x => x.Id, x => x);
+        var incomingIds = incoming.Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToHashSet();
 
-        var toRemove = entity.Options
-            .Where(o => !incomingIds.Contains(o.Id))
-            .ToList();
-
-        foreach (var option in toRemove)
+        // Удаление отсутствующих (через навигацию; владелец Unchanged)
+        foreach (var toDel in entity.Options.Where(x => !incomingIds.Contains(x.Id)).ToList())
         {
-            entity.Options.Remove(option);
+            entity.Options.Remove(toDel);
+            // Для owned EF сам пометит удаление зависимой строки
         }
 
-        foreach (var option in normalizedOptions)
+        // Добавление/обновление с явными состояниями зависимых
+        foreach (var inc in incoming)
         {
-            var optionDto = option.Dto;
-
-            if (option.Id.HasValue && existingById.TryGetValue(option.Id.Value, out var existing))
+            if (inc.Id.HasValue && existingById.TryGetValue(inc.Id.Value, out var exist))
             {
-                existing.Label = optionDto.Label;
-                existing.IsCorrect = optionDto.IsCorrect;
-                existing.ImageUrl = optionDto.ImageUrl;
-                continue;
+                exist.Label = inc.Label;
+                exist.IsCorrect = inc.IsCorrect;
+                exist.ImageUrl = inc.ImageUrl;
+
+                // ЯВНО: изменяемая зависимая
+                _db.Entry(exist).State = EntityState.Modified;
             }
-
-            entity.Options.Add(new TaskOption
+            else
             {
-                Id = Guid.NewGuid(),
-                Label = optionDto.Label,
-                IsCorrect = optionDto.IsCorrect,
-                ImageUrl = optionDto.ImageUrl,
-            });
+                var created = new TaskOption
+                {
+                    Id = Guid.NewGuid(),
+                    Label = inc.Label,
+                    IsCorrect = inc.IsCorrect,
+                    ImageUrl = inc.ImageUrl
+                };
+                entity.Options.Add(created);
+
+                // ЯВНО: новая зависимая
+                _db.Entry(created).State = EntityState.Added;
+            }
         }
 
-        entity.OrderIndex = dto.OrderIndex;
-        entity.TimeLimitSec = dto.TimeLimitSec;
-        entity.PointsAttempt1 = dto.PointsAttempt1;
-        entity.PointsAttempt2 = dto.PointsAttempt2;
-        entity.PointsAttempt3 = dto.PointsAttempt3;
-        entity.ExplanationText = dto.ExplanationText;
+        try
+        {
+            await _db.SaveChangesAsync(); // здесь должны уйти только INSERT/DELETE/UPDATE по TaskOptions
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return (ActionResult<TaskDto>)Conflict("Конфликт при обновлении опций: данные были изменены. Обновите и повторите.");
+        }
 
-        await _db.SaveChangesAsync();
+        return (ActionResult<TaskDto>)Ok(_mapper.Map<TaskDto>(entity));
+    });
+}
 
-        return Ok(_mapper.Map<TaskDto>(entity));
-    }
+
 
     // DELETE /api/tasks/{id} (Admin)
     [HttpDelete("{id:guid}")]
