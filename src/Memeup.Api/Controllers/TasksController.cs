@@ -89,10 +89,16 @@ public class TasksController : ControllerBase
         entity.HeaderText = dto.HeaderText;
         entity.ImageUrl = dto.ImageUrl;
 
-        var optionDtos = dto.Options ?? Array.Empty<TaskOptionDto>();
+        var normalizedOptions = (dto.Options ?? Array.Empty<TaskOptionDto>())
+            .Select(o => new
+            {
+                Dto = o,
+                Id = o.Id is { } value && value != Guid.Empty ? value : (Guid?)null
+            })
+            .ToList();
 
         var existingById = entity.Options.ToDictionary(o => o.Id);
-        var incomingIds = optionDtos
+        var incomingIds = normalizedOptions
             .Where(o => o.Id.HasValue)
             .Select(o => o.Id!.Value)
             .ToHashSet();
@@ -106,9 +112,11 @@ public class TasksController : ControllerBase
             entity.Options.Remove(option);
         }
 
-        foreach (var optionDto in optionDtos)
+        foreach (var option in normalizedOptions)
         {
-            if (optionDto.Id.HasValue && existingById.TryGetValue(optionDto.Id.Value, out var existing))
+            var optionDto = option.Dto;
+
+            if (option.Id.HasValue && existingById.TryGetValue(option.Id.Value, out var existing))
             {
                 existing.Label = optionDto.Label;
                 existing.IsCorrect = optionDto.IsCorrect;
@@ -118,7 +126,7 @@ public class TasksController : ControllerBase
 
             entity.Options.Add(new TaskOption
             {
-                Id = optionDto.Id ?? Guid.NewGuid(),
+                Id = Guid.NewGuid(),
                 Label = optionDto.Label,
                 IsCorrect = optionDto.IsCorrect,
                 ImageUrl = optionDto.ImageUrl,
