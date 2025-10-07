@@ -29,8 +29,8 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
 
             opt.WithOwner().HasForeignKey("TaskItemId");
 
-            opt.HasKey("Id");
-            opt.Property<Guid>("Id")
+            opt.HasKey(o => o.Id);
+            opt.Property(o => o.Id)
                 .ValueGeneratedOnAdd();
 
             opt.Property(o => o.Label)
@@ -59,36 +59,36 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     }
 
     private void TouchTimestamps()
-{
-    var now = DateTimeOffset.UtcNow;
-
-    foreach (var entry in ChangeTracker.Entries())
     {
-        if (entry.State is not (EntityState.Added or EntityState.Modified))
-            continue;
+        var now = DateTimeOffset.UtcNow;
 
-        // Есть ли у сущности поле UpdatedAt?
-        var hasUpdatedAt = entry.Metadata.FindProperty("UpdatedAt") is not null;
-        if (hasUpdatedAt)
+        foreach (var entry in ChangeTracker.Entries())
         {
-            entry.CurrentValues["UpdatedAt"] = now;
-        }
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
+                continue;
 
-        // Есть ли у сущности поле CreatedAt? (только для Added)
-        if (entry.State == EntityState.Added)
-        {
-            var hasCreatedAt = entry.Metadata.FindProperty("CreatedAt") is not null;
-            if (hasCreatedAt)
+            // Есть ли у сущности поле UpdatedAt?
+            var hasUpdatedAt = entry.Metadata.FindProperty("UpdatedAt") is not null;
+            if (hasUpdatedAt)
             {
-                entry.CurrentValues["CreatedAt"] = now;
+                entry.CurrentValues["UpdatedAt"] = now;
+            }
+
+            // Есть ли у сущности поле CreatedAt? (только для Added)
+            if (entry.State == EntityState.Added)
+            {
+                var hasCreatedAt = entry.Metadata.FindProperty("CreatedAt") is not null;
+                if (hasCreatedAt)
+                {
+                    entry.CurrentValues["CreatedAt"] = now;
+                }
+            }
+
+            var hasRowVersion = entry.Metadata.FindProperty("RowVersion") is not null;
+            if (hasRowVersion)
+            {
+                entry.CurrentValues["RowVersion"] = Guid.NewGuid().ToByteArray();
             }
         }
-
-        var hasRowVersion = entry.Metadata.FindProperty("RowVersion") is not null;
-        if (hasRowVersion)
-        {
-            entry.CurrentValues["RowVersion"] = Guid.NewGuid().ToByteArray();
-        }
     }
-}
 }
