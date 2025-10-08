@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Memeup.Api.Features.Sections;
 
@@ -41,4 +42,22 @@ public class SectionUpdateDto
     /// <summary>0 = Draft, 1 = Published</summary>
     [Range(0, 1)]
     public int Status { get; set; } = 0;
+}
+
+public class PublicSectionDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = default!;
+
+    [JsonPropertyName("imageUrl")]
+    public string? ImageUrl { get; set; }
+
+    [JsonPropertyName("completedLevelsCount")]
+    public int CompletedLevelsCount { get; set; }
+
+    [JsonPropertyName("totalLevelsCount")]
+    public int TotalLevelsCount { get; set; }
 }

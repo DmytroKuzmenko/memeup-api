@@ -20,6 +20,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
 public class TasksController : ControllerBase
 {
     private readonly MemeupDbContext _db;
@@ -33,7 +34,6 @@ public class TasksController : ControllerBase
 
     // GET /api/levels/{levelId}/tasks  (по контракту)
     [HttpGet("/api/levels/{levelId:guid}/tasks")]
-    [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<TaskDto>>> GetByLevel(Guid levelId)
     {
         var exists = await _db.Levels.AnyAsync(l => l.Id == levelId);
@@ -50,7 +50,6 @@ public class TasksController : ControllerBase
 
     // GET /api/tasks/{id}
     [HttpGet("{id:guid}")]
-    [AllowAnonymous]
     public async Task<ActionResult<TaskDto>> GetById(Guid id)
     {
         var entity = await _db.Tasks

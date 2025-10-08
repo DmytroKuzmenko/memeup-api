@@ -12,6 +12,7 @@ namespace Memeup.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
 public class LevelsController : ControllerBase
 {
     private readonly MemeupDbContext _db;
@@ -25,7 +26,6 @@ public class LevelsController : ControllerBase
 
     // GET /api/sections/{sectionId}/levels  (по контракту)
     [HttpGet("/api/sections/{sectionId:guid}/levels")]
-    [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<LevelDto>>> GetBySection(Guid sectionId)
     {
         var exists = await _db.Sections.AnyAsync(s => s.Id == sectionId);
@@ -42,7 +42,6 @@ public class LevelsController : ControllerBase
 
     // GET /api/levels/{id}
     [HttpGet("{id:guid}")]
-    [AllowAnonymous]
     public async Task<ActionResult<LevelDto>> GetById(Guid id)
     {
         var entity = await _db.Levels.FindAsync(id);
