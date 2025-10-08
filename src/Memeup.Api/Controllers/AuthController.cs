@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -15,14 +16,17 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly IConfiguration _config;
 
     public AuthController(UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
+        RoleManager<IdentityRole<Guid>> roleManager,
         IConfiguration config)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
         _config = config;
     }
 
@@ -63,6 +67,58 @@ public class AuthController : ControllerBase
             expiresAt = expires
         });
     }
+
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+        {
+            return BadRequest(new { message = "EmailAlreadyInUse" });
+        }
+
+        var user = new ApplicationUser
+        {
+            Email = request.Email,
+            UserName = string.IsNullOrWhiteSpace(request.UserName) ? request.Email : request.UserName,
+            EmailConfirmed = false
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        const string defaultRole = "User";
+
+        if (!await _roleManager.RoleExistsAsync(defaultRole))
+        {
+            var roleCreateResult = await _roleManager.CreateAsync(new IdentityRole<Guid>(defaultRole));
+            if (!roleCreateResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                return StatusCode(500, new { errors = roleCreateResult.Errors.Select(e => e.Description) });
+            }
+        }
+
+        var addToRoleResult = await _userManager.AddToRoleAsync(user, defaultRole);
+        if (!addToRoleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            return StatusCode(500, new { errors = addToRoleResult.Errors.Select(e => e.Description) });
+        }
+
+        return StatusCode(201, new { user.Id, user.Email });
+    }
 }
 
 public record LoginRequest(string Email, string Password);
+
+public record RegisterRequest(
+    [Required, EmailAddress] string Email,
+    [Required, MinLength(6)] string Password,
+    string? UserName);
