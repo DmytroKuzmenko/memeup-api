@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Memeup.Api.Data;
@@ -12,6 +13,7 @@ using Memeup.Api.Domain.Game;
 using Memeup.Api.Domain.Levels;
 using Memeup.Api.Domain.Tasks;
 using Memeup.Api.Features.Game;
+using Microsoft.Extensions.Logging;
 
 namespace Memeup.Api.Controllers;
 
@@ -22,10 +24,12 @@ public class GameLevelsController : ControllerBase
 {
     private static readonly TimeSpan TimerGrace = TimeSpan.FromSeconds(5);
     private readonly MemeupDbContext _db;
+    private readonly ILogger<GameLevelsController> _logger;
 
-    public GameLevelsController(MemeupDbContext db)
+    public GameLevelsController(MemeupDbContext db, ILogger<GameLevelsController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     [HttpGet("{levelId:guid}/intro")]
@@ -43,7 +47,10 @@ public class GameLevelsController : ControllerBase
             return NotFound();
         }
 
-        var unlocked = await IsLevelUnlocked(userId, level, ct);
+        var statusLookup = await LevelLockingService.ComputeStatusesAsync(_db, level.SectionId, userId, ct);
+        var levelStatus = statusLookup.TryGetValue(level.Id, out var resolvedStatus)
+            ? resolvedStatus
+            : LevelProgressStatuses.Locked;
 
         var tasksQuery = _db.Tasks
             .Where(t => t.LevelId == levelId && t.Status == PublishStatus.Published);
@@ -54,12 +61,6 @@ public class GameLevelsController : ControllerBase
         var progress = await _db.UserLevelProgress
             .FirstOrDefaultAsync(p => p.UserId == userId && p.LevelId == levelId, ct);
 
-        var status = progress?.Status ?? LevelProgressStatuses.NotStarted;
-        if (!unlocked)
-        {
-            status = LevelProgressStatuses.Locked;
-        }
-
         var dto = new LevelIntroDto
         {
             LevelId = level.Id,
@@ -69,7 +70,7 @@ public class GameLevelsController : ControllerBase
             OrderIndex = level.OrderIndex,
             TasksCount = tasksCount,
             MaxScore = maxScore,
-            Status = status,
+            Status = levelStatus,
             ReplayAvailableAt = progress?.ReplayAvailableAt
         };
 
@@ -92,9 +93,11 @@ public class GameLevelsController : ControllerBase
             return NotFound();
         }
 
-        if (!await IsLevelUnlocked(userId, level, ct))
+        var levelStatus = await ResolveLevelStatus(userId, level, ct);
+        if (levelStatus == LevelProgressStatuses.Locked)
         {
-            return Forbid();
+            _logger.LogWarning("User {UserId} attempted to start locked level {LevelId}", userId, level.Id);
+            return LevelLocked();
         }
 
         var tasks = await LoadOrderedTasks(levelId, ct);
@@ -146,7 +149,8 @@ public class GameLevelsController : ControllerBase
             }
             else if (progress.Status == LevelProgressStatuses.Locked)
             {
-                return Forbid();
+                _logger.LogWarning("User {UserId} attempted to start locked level {LevelId}", userId, level.Id);
+                return LevelLocked();
             }
             else
             {
@@ -181,14 +185,11 @@ public class GameLevelsController : ControllerBase
             return NotFound();
         }
 
-        if (!await IsLevelUnlocked(userId, level, ct))
+        var levelStatus = await ResolveLevelStatus(userId, level, ct);
+        if (levelStatus == LevelProgressStatuses.Locked)
         {
-            return Ok(new TaskDeliveryResponse
-            {
-                LevelId = level.Id,
-                Status = "locked",
-                LevelProgress = await BuildLevelProgress(userId, levelId, ct)
-            });
+            _logger.LogWarning("User {UserId} attempted to fetch next task for locked level {LevelId}", userId, level.Id);
+            return LevelLocked();
         }
 
         var tasks = await LoadOrderedTasks(levelId, ct);
@@ -202,18 +203,7 @@ public class GameLevelsController : ControllerBase
 
         if (progress == null)
         {
-            return Ok(new TaskDeliveryResponse
-            {
-                LevelId = level.Id,
-                Status = "locked",
-                LevelProgress = new LevelProgressDto
-                {
-                    CompletedTasks = 0,
-                    TotalTasks = tasks.Count,
-                    Score = 0,
-                    MaxScore = tasks.Sum(t => t.PointsAttempt1)
-                }
-            });
+            return LevelLocked();
         }
 
         if (progress.Status == LevelProgressStatuses.Completed)
@@ -247,9 +237,11 @@ public class GameLevelsController : ControllerBase
             return NotFound();
         }
 
-        if (!await IsLevelUnlocked(userId, level, ct))
+        var levelStatus = await ResolveLevelStatus(userId, level, ct);
+        if (levelStatus == LevelProgressStatuses.Locked)
         {
-            return Forbid();
+            _logger.LogWarning("User {UserId} attempted to replay locked level {LevelId}", userId, level.Id);
+            return LevelLocked();
         }
 
         var progress = await _db.UserLevelProgress
@@ -521,32 +513,24 @@ public class GameLevelsController : ControllerBase
         return attempts;
     }
 
-    private async Task<bool> IsLevelUnlocked(Guid userId, Level level, CancellationToken ct)
+    private async Task<string> ResolveLevelStatus(Guid userId, Level level, CancellationToken ct)
     {
-        var sectionLevels = await _db.Levels
-            .Where(l => l.SectionId == level.SectionId && l.Status == PublishStatus.Published)
-            .OrderBy(l => l.OrderIndex)
-            .ThenBy(l => l.CreatedAt)
-            .Select(l => new { l.Id, l.OrderIndex })
-            .ToListAsync(ct);
-
-        foreach (var other in sectionLevels)
+        var statusLookup = await LevelLockingService.ComputeStatusesAsync(_db, level.SectionId, userId, ct);
+        if (statusLookup.TryGetValue(level.Id, out var status))
         {
-            if (other.Id == level.Id)
-            {
-                break;
-            }
-
-            var progress = await _db.UserLevelProgress
-                .FirstOrDefaultAsync(p => p.UserId == userId && p.LevelId == other.Id, ct);
-
-            if (progress?.Status != LevelProgressStatuses.Completed)
-            {
-                return false;
-            }
+            return status;
         }
 
-        return true;
+        return LevelProgressStatuses.Locked;
+    }
+
+    private ActionResult<TaskDeliveryResponse> LevelLocked()
+    {
+        return StatusCode(StatusCodes.Status403Forbidden, new
+        {
+            error = "LevelLocked",
+            message = "Previous levels must be completed first."
+        });
     }
 
     private async Task<LevelProgressDto> BuildLevelProgress(Guid userId, Guid levelId, CancellationToken ct)

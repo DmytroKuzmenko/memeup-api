@@ -180,6 +180,24 @@ public class GameSectionsController : ControllerBase
             };
         }).ToList();
 
+        var lockingInputs = result.Select(l => new LevelLockingInfo
+        {
+            LevelId = l.Id,
+            OrderIndex = l.OrderIndex,
+            Status = l.Status,
+            IsCompleted = l.IsCompleted
+        }).ToList();
+
+        var finalStatuses = LevelLockingService.ComputeStatuses(lockingInputs);
+        foreach (var level in result)
+        {
+            if (finalStatuses.TryGetValue(level.Id, out var status))
+            {
+                level.Status = status;
+                level.IsCompleted = status == LevelProgressStatuses.Completed;
+            }
+        }
+
         return Ok(result);
     }
 
