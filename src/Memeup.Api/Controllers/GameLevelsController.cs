@@ -447,7 +447,21 @@ public class GameLevelsController : ControllerBase
                     return current;
                 }
 
-                var currentIndex = tasks.IndexOf(current);
+                var currentIndex = -1;
+                for (var i = 0; i < tasks.Count; i++)
+                {
+                    if (tasks[i].Id == current.Id)
+                    {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+
+                if (currentIndex < 0)
+                {
+                    return current;
+                }
+
                 for (var i = currentIndex + 1; i < tasks.Count; i++)
                 {
                     var task = tasks[i];
