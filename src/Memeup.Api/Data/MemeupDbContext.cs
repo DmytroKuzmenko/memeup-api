@@ -6,6 +6,7 @@ using Memeup.Api.Domain.Auth;
 using Memeup.Api.Domain.Sections;
 using Memeup.Api.Domain.Levels;
 using Memeup.Api.Domain.Tasks;
+using Memeup.Api.Domain.Game;
 
 namespace Memeup.Api.Data;
 
@@ -16,6 +17,12 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<Section> Sections => Set<Section>();
     public DbSet<Level> Levels => Set<Level>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<UserTaskProgress> UserTaskProgress => Set<UserTaskProgress>();
+    public DbSet<TaskAttemptLog> TaskAttemptLogs => Set<TaskAttemptLog>();
+    public DbSet<UserLevelProgress> UserLevelProgress => Set<UserLevelProgress>();
+    public DbSet<UserSectionProgress> UserSectionProgress => Set<UserSectionProgress>();
+    public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
+    public DbSet<ActiveTaskAttempt> ActiveTaskAttempts => Set<ActiveTaskAttempt>();
 
     protected override void OnModelCreating(ModelBuilder b)
 {
@@ -50,7 +57,45 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     });
 
     taskEntity.Navigation(t => t.Options).AutoInclude();
-}    
+
+    b.Entity<UserTaskProgress>(entity =>
+    {
+        entity.HasIndex(x => new { x.UserId, x.TaskId }).IsUnique();
+        entity.Property(x => x.PointsEarned).HasDefaultValue(0);
+        entity.Property(x => x.AttemptsUsed).HasDefaultValue(0);
+    });
+
+    b.Entity<TaskAttemptLog>(entity =>
+    {
+        entity.HasIndex(x => new { x.UserId, x.TaskId });
+        entity.Property(x => x.ClientAgent).HasMaxLength(1024);
+        entity.Property(x => x.ClientTz).HasMaxLength(128);
+        entity.Property(x => x.IpHash).HasMaxLength(256);
+    });
+
+    b.Entity<UserLevelProgress>(entity =>
+    {
+        entity.HasIndex(x => new { x.UserId, x.LevelId }).IsUnique();
+        entity.Property(x => x.Status).HasMaxLength(32);
+    });
+
+    b.Entity<UserSectionProgress>(entity =>
+    {
+        entity.HasIndex(x => new { x.UserId, x.SectionId }).IsUnique();
+    });
+
+    b.Entity<LeaderboardEntry>(entity =>
+    {
+        entity.HasIndex(x => new { x.UserId, x.Period }).IsUnique();
+        entity.Property(x => x.Period).HasMaxLength(32);
+    });
+
+    b.Entity<ActiveTaskAttempt>(entity =>
+    {
+        entity.HasIndex(x => x.Token).IsUnique();
+        entity.HasIndex(x => new { x.UserId, x.TaskId, x.IsFinalized });
+    });
+}
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
