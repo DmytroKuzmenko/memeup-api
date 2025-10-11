@@ -30,6 +30,18 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
 
     var taskEntity = b.Entity<TaskItem>();
 
+    taskEntity.Property(t => t.ImageUrl)
+        .HasMaxLength(1024);
+
+    taskEntity.Property(t => t.ResultImagePath)
+        .HasMaxLength(1024);
+
+    taskEntity.Property(t => t.ResultImageSource)
+        .HasMaxLength(1024);
+
+    taskEntity.Property(t => t.TaskImageSource)
+        .HasMaxLength(1024);
+
     taskEntity.OwnsMany(t => t.Options, owned =>
     {
         owned.ToTable("TaskOptions");

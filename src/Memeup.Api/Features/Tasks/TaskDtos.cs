@@ -11,6 +11,9 @@ public class TaskDto
     public int Type { get; set; }            // TaskType as int
     public string? HeaderText { get; set; }
     public string? ImageUrl { get; set; }
+    public string? ResultImagePath { get; set; }
+    public string? ResultImageSource { get; set; }
+    public string? TaskImageSource { get; set; }
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
     public int OrderIndex { get; set; }
     public int? TimeLimitSec { get; set; }
@@ -47,6 +50,15 @@ public class TaskCreateDto
 
     [StringLength(1024)]
     public string? ImageUrl { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImagePath { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImageSource { get; set; }
+
+    [StringLength(1024)]
+    public string? TaskImageSource { get; set; }
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
 
     public int OrderIndex { get; set; } = 0;
@@ -75,6 +87,15 @@ public class TaskUpdateDto
 
     [StringLength(1024)]
     public string? ImageUrl { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImagePath { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImageSource { get; set; }
+
+    [StringLength(1024)]
+    public string? TaskImageSource { get; set; }
 
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
     

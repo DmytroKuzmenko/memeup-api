@@ -136,6 +136,15 @@ public class GameTaskDto
     [JsonPropertyName("imageUrl")]
     public string? ImageUrl { get; set; }
 
+    [JsonPropertyName("resultImagePath")]
+    public string? ResultImagePath { get; set; }
+
+    [JsonPropertyName("resultImageSource")]
+    public string? ResultImageSource { get; set; }
+
+    [JsonPropertyName("taskImageSource")]
+    public string? TaskImageSource { get; set; }
+
     [JsonPropertyName("options")]
     public IReadOnlyList<GameTaskOptionDto> Options { get; set; } = Array.Empty<GameTaskOptionDto>();
 
@@ -210,6 +219,15 @@ public class TaskSubmitResponse
 
     [JsonPropertyName("explanationText")]
     public string? ExplanationText { get; set; }
+
+    [JsonPropertyName("resultImagePath")]
+    public string? ResultImagePath { get; set; }
+
+    [JsonPropertyName("resultImageSource")]
+    public string? ResultImageSource { get; set; }
+
+    [JsonPropertyName("taskImageSource")]
+    public string? TaskImageSource { get; set; }
 }
 
 public class LeaderboardEntryDto

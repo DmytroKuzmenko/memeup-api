@@ -59,6 +59,9 @@ public class TasksControllerTests
             InternalName = "initial",
             HeaderText = "header",
             ImageUrl = "image",
+            ResultImagePath = "result-path",
+            ResultImageSource = "result-source",
+            TaskImageSource = "task-source",
             Options =
             [
                 new TaskOptionDto { Label = "Option A", IsCorrect = true },
@@ -83,6 +86,9 @@ public class TasksControllerTests
             InternalName = "updated",
             HeaderText = "updated header",
             ImageUrl = "updated-image",
+            ResultImagePath = "updated-result-path",
+            ResultImageSource = "updated-result-source",
+            TaskImageSource = "updated-task-source",
             Options =
             [
                 new TaskOptionDto { Label = "Updated Option", IsCorrect = true, ImageUrl = "option.png" }
@@ -103,6 +109,9 @@ public class TasksControllerTests
         Assert.Equal("Updated Option", updatedDto.Options[0].Label);
         Assert.Equal("option.png", updatedDto.Options[0].ImageUrl);
         Assert.True(updatedDto.Options[0].IsCorrect);
+        Assert.Equal("updated-result-path", updatedDto.ResultImagePath);
+        Assert.Equal("updated-result-source", updatedDto.ResultImageSource);
+        Assert.Equal("updated-task-source", updatedDto.TaskImageSource);
         var entity = await context.Tasks
             .Include(t => t.Options)
             .SingleAsync(t => t.Id == createdDto.Id);
@@ -111,6 +120,9 @@ public class TasksControllerTests
         Assert.Equal("Updated Option", entity.Options.First().Label);
         Assert.Equal("option.png", entity.Options.First().ImageUrl);
         Assert.True(entity.Options.First().IsCorrect);
+        Assert.Equal("updated-result-path", entity.ResultImagePath);
+        Assert.Equal("updated-result-source", entity.ResultImageSource);
+        Assert.Equal("updated-task-source", entity.TaskImageSource);
     }
 
     [Fact]
@@ -158,6 +170,9 @@ public class TasksControllerTests
             InternalName = "initial",
             HeaderText = "header",
             ImageUrl = "image",
+            ResultImagePath = "result-path",
+            ResultImageSource = "result-source",
+            TaskImageSource = "task-source",
             Options =
             [
                 new TaskOptionDto { Label = "Option A", IsCorrect = true },
@@ -185,6 +200,9 @@ public class TasksControllerTests
             InternalName = "updated",
             HeaderText = "updated header",
             ImageUrl = "updated-image",
+            ResultImagePath = "updated-result-path",
+            ResultImageSource = "updated-result-source",
+            TaskImageSource = "updated-task-source",
             Options =
             [
                 new TaskOptionDto { Id = existingId, Label = "Option A updated", IsCorrect = false },

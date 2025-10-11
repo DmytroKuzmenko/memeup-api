@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Memeup.Api.Domain.Abstractions;
 using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Levels;
@@ -13,7 +14,17 @@ public class TaskItem : BaseEntity
     public TaskType Type { get; set; } = TaskType.MemeTask;
 
     public string? HeaderText { get; set; }
+    [StringLength(1024)]
     public string? ImageUrl { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImagePath { get; set; }
+
+    [StringLength(1024)]
+    public string? ResultImageSource { get; set; }
+
+    [StringLength(1024)]
+    public string? TaskImageSource { get; set; }
     public ICollection<TaskOption> Options { get; set; } = new List<TaskOption>();
     public int OrderIndex { get; set; } = 0;
     public int? TimeLimitSec { get; set; }

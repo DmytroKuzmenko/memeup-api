@@ -249,7 +249,10 @@ public class GameTasksController : ControllerBase
             LevelCompleted = levelCompleted,
             LevelSummary = summary,
             NextAction = "nextTask",
-            ExplanationText = isCorrect ? task.ExplanationText : null
+            ExplanationText = isCorrect ? task.ExplanationText : null,
+            ResultImagePath = task.ResultImagePath,
+            ResultImageSource = task.ResultImageSource,
+            TaskImageSource = task.TaskImageSource
         };
 
         return Ok(response);
