@@ -109,6 +109,8 @@ public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
         task.ResultImagePath = dto.ResultImagePath;
         task.ResultImageSource = dto.ResultImageSource;
         task.TaskImageSource = dto.TaskImageSource;
+        task.CharsCsv = dto.CharsCsv;
+        task.CorrectAnswer = dto.CorrectAnswer;
         task.OrderIndex = dto.OrderIndex;
         task.TimeLimitSec = dto.TimeLimitSec;
         task.PointsAttempt1 = dto.PointsAttempt1;
