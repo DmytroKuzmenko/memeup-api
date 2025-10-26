@@ -363,8 +363,9 @@ public class GameLevelsController : ControllerBase
 
         var attemptNumber = currentTaskProgress.AttemptsUsed + 1;
         var timeLimit = nextTask.TimeLimitSec ?? level.TimeLimitSec;
+        var hasTimeLimit = timeLimit.HasValue && timeLimit.Value > 0;
         var now = DateTimeOffset.UtcNow;
-        var expiresAt = timeLimit.HasValue
+        var expiresAt = hasTimeLimit
             ? now.AddSeconds(timeLimit.Value).Add(TimerGrace)
             : DateTimeOffset.MaxValue;
 
