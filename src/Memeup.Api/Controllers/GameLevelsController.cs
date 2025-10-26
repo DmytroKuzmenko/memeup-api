@@ -23,6 +23,7 @@ namespace Memeup.Api.Controllers;
 public class GameLevelsController : ControllerBase
 {
     private static readonly TimeSpan TimerGrace = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReplayCooldown = TimeSpan.FromSeconds(30);
     private readonly MemeupDbContext _db;
     private readonly ILogger<GameLevelsController> _logger;
 
@@ -322,6 +323,19 @@ public class GameLevelsController : ControllerBase
         var nextTask = ResolveNextTask(tasks, progress, progressLookup);
         if (nextTask == null)
         {
+            var now = DateTimeOffset.UtcNow;
+            var score = taskProgress.Sum(tp => tp.PointsEarned);
+            var maxScore = tasks.Sum(t => t.PointsAttempt1);
+
+            progress.Status = LevelProgressStatuses.Completed;
+            progress.LastRunScore = score;
+            progress.MaxScore = maxScore;
+            progress.BestScore = Math.Max(progress.BestScore, score);
+            progress.LastTaskId = null;
+            progress.LastCompletedAt = now;
+            progress.ReplayAvailableAt = now.Add(ReplayCooldown);
+            progress.UpdatedAt = now;
+
             return new TaskDeliveryResponse
             {
                 LevelId = level.Id,
