@@ -175,8 +175,8 @@ public class TaskDeliveryResponse
 
 public class TaskSubmitRequest
 {
-    [JsonPropertyName("selectedOptionId")]
-    public Guid? SelectedOptionId { get; set; }
+    [JsonPropertyName("selectedOptionIds")]
+    public IReadOnlyCollection<Guid> SelectedOptionIds { get; set; } = Array.Empty<Guid>();
 
     [JsonPropertyName("attemptToken")]
     public Guid AttemptToken { get; set; }

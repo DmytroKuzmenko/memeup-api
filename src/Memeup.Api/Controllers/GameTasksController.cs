@@ -85,22 +85,32 @@ public class GameTasksController : ControllerBase
             var expired = activeAttempt.ExpiresAt != DateTimeOffset.MaxValue && now > activeAttempt.ExpiresAt;
             var timeSpent = (int)Math.Max(0, Math.Round((now - activeAttempt.AttemptStartAt).TotalSeconds));
 
-            TaskOption? selectedOption = null;
-            if (request.SelectedOptionId.HasValue)
+            var selectedOptionIds = (request.SelectedOptionIds ?? Array.Empty<Guid>())
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (!selectedOptionIds.Any() && !expired)
             {
-                selectedOption = task.Options.FirstOrDefault(o => o.Id == request.SelectedOptionId.Value);
-                if (selectedOption == null)
-                {
-                    return UnprocessableEntity(new { message = "Selected option is invalid" });
-                }
+                return UnprocessableEntity(new { message = "At least one option must be provided" });
             }
 
-            var isTimeout = expired;
-            var isCorrect = !isTimeout && selectedOption != null && selectedOption.IsCorrect;
-            if (!isTimeout && selectedOption == null)
+            var invalidOptionId = selectedOptionIds.FirstOrDefault(id => task.Options.All(o => o.Id != id));
+            if (invalidOptionId != Guid.Empty)
             {
-                return UnprocessableEntity(new { message = "Option must be provided" });
+                return UnprocessableEntity(new { message = "Selected option is invalid" });
             }
+
+            var correctOptionIds = task.Options
+                .Where(o => o.IsCorrect)
+                .Select(o => o.Id)
+                .ToList();
+
+            var isTimeout = expired;
+            var isCorrect = !isTimeout
+                && correctOptionIds.Any()
+                && selectedOptionIds.Count == correctOptionIds.Count
+                && !selectedOptionIds.Except(correctOptionIds).Any();
 
             var points = isCorrect ? GetPointsForAttempt(task, attemptNumber) : 0;
 
