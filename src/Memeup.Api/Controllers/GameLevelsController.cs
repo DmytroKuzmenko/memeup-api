@@ -323,7 +323,7 @@ public class GameLevelsController : ControllerBase
         var nextTask = ResolveNextTask(tasks, progress, progressLookup);
         if (nextTask == null)
         {
-            var now = DateTimeOffset.UtcNow;
+            var completedAt = DateTimeOffset.UtcNow;
             var score = taskProgress.Sum(tp => tp.PointsEarned);
             var maxScore = tasks.Sum(t => t.PointsAttempt1);
 
@@ -332,9 +332,9 @@ public class GameLevelsController : ControllerBase
             progress.MaxScore = maxScore;
             progress.BestScore = Math.Max(progress.BestScore, score);
             progress.LastTaskId = null;
-            progress.LastCompletedAt = now;
-            progress.ReplayAvailableAt = now.Add(ReplayCooldown);
-            progress.UpdatedAt = now;
+            progress.LastCompletedAt = completedAt;
+            progress.ReplayAvailableAt = completedAt.Add(ReplayCooldown);
+            progress.UpdatedAt = completedAt;
 
             return new TaskDeliveryResponse
             {
@@ -377,10 +377,9 @@ public class GameLevelsController : ControllerBase
 
         var attemptNumber = currentTaskProgress.AttemptsUsed + 1;
         var timeLimit = nextTask.TimeLimitSec ?? level.TimeLimitSec;
-        var hasTimeLimit = timeLimit.HasValue && timeLimit.Value > 0;
         var now = DateTimeOffset.UtcNow;
-        var expiresAt = hasTimeLimit
-            ? now.AddSeconds(timeLimit.Value).Add(TimerGrace)
+        var expiresAt = timeLimit is int seconds && seconds > 0
+            ? now.AddSeconds(seconds).Add(TimerGrace)
             : DateTimeOffset.MaxValue;
 
         await FinalizeActiveAttempts(userId, nextTask.Id, ct);
