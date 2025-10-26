@@ -33,229 +33,236 @@ public class GameTasksController : ControllerBase
             return BadRequest();
         }
 
-        var userId = GetCurrentUserId();
-        var now = DateTimeOffset.UtcNow;
+        var strategy = _db.Database.CreateExecutionStrategy();
 
-        var activeAttempt = await _db.ActiveTaskAttempts
-            .FirstOrDefaultAsync(a => a.Token == request.AttemptToken, ct);
-
-        if (activeAttempt == null)
+        async Task<ActionResult<TaskSubmitResponse>> ExecuteCore()
         {
-            return NotFound(new { message = "Attempt token not found" });
-        }
+            var userId = GetCurrentUserId();
+            var now = DateTimeOffset.UtcNow;
 
-        if (activeAttempt.UserId != userId)
-        {
-            return Forbid();
-        }
+            var activeAttempt = await _db.ActiveTaskAttempts
+                .FirstOrDefaultAsync(a => a.Token == request.AttemptToken, ct);
 
-        if (activeAttempt.TaskId != taskId)
-        {
-            return BadRequest(new { message = "Attempt token does not match task" });
-        }
-
-        if (activeAttempt.IsFinalized)
-        {
-            return Conflict(new { message = "Attempt already finalized" });
-        }
-
-        var task = await _db.Tasks
-            .Include(t => t.Level)
-            .ThenInclude(l => l.Section)
-            .Include(t => t.Options)
-            .FirstOrDefaultAsync(t => t.Id == taskId && t.Status == PublishStatus.Published, ct);
-
-        if (task == null)
-        {
-            return NotFound();
-        }
-
-        if (activeAttempt.LevelId != task.LevelId)
-        {
-            return BadRequest(new { message = "Attempt token does not match level" });
-        }
-
-        var maxAttempts = CalculateMaxAttempts(task);
-        var attemptNumber = Math.Min(activeAttempt.AttemptNumber, maxAttempts);
-
-        var expired = activeAttempt.ExpiresAt != DateTimeOffset.MaxValue && now > activeAttempt.ExpiresAt;
-        var timeSpent = (int)Math.Max(0, Math.Round((now - activeAttempt.AttemptStartAt).TotalSeconds));
-
-        TaskOption? selectedOption = null;
-        if (request.SelectedOptionId.HasValue)
-        {
-            selectedOption = task.Options.FirstOrDefault(o => o.Id == request.SelectedOptionId.Value);
-            if (selectedOption == null)
+            if (activeAttempt == null)
             {
-                return UnprocessableEntity(new { message = "Selected option is invalid" });
+                return NotFound(new { message = "Attempt token not found" });
             }
-        }
 
-        var isTimeout = expired;
-        var isCorrect = !isTimeout && selectedOption != null && selectedOption.IsCorrect;
-        if (!isTimeout && selectedOption == null)
-        {
-            return UnprocessableEntity(new { message = "Option must be provided" });
-        }
+            if (activeAttempt.UserId != userId)
+            {
+                return Forbid();
+            }
 
-        var points = isCorrect ? GetPointsForAttempt(task, attemptNumber) : 0;
+            if (activeAttempt.TaskId != taskId)
+            {
+                return BadRequest(new { message = "Attempt token does not match task" });
+            }
 
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            if (activeAttempt.IsFinalized)
+            {
+                return Conflict(new { message = "Attempt already finalized" });
+            }
 
-        var taskProgress = await _db.UserTaskProgress
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.TaskId == task.Id, ct);
+            var task = await _db.Tasks
+                .Include(t => t.Level)
+                .ThenInclude(l => l.Section)
+                .Include(t => t.Options)
+                .FirstOrDefaultAsync(t => t.Id == taskId && t.Status == PublishStatus.Published, ct);
 
-        if (taskProgress == null)
-        {
-            taskProgress = new UserTaskProgress
+            if (task == null)
+            {
+                return NotFound();
+            }
+
+            if (activeAttempt.LevelId != task.LevelId)
+            {
+                return BadRequest(new { message = "Attempt token does not match level" });
+            }
+
+            var maxAttempts = CalculateMaxAttempts(task);
+            var attemptNumber = Math.Min(activeAttempt.AttemptNumber, maxAttempts);
+
+            var expired = activeAttempt.ExpiresAt != DateTimeOffset.MaxValue && now > activeAttempt.ExpiresAt;
+            var timeSpent = (int)Math.Max(0, Math.Round((now - activeAttempt.AttemptStartAt).TotalSeconds));
+
+            TaskOption? selectedOption = null;
+            if (request.SelectedOptionId.HasValue)
+            {
+                selectedOption = task.Options.FirstOrDefault(o => o.Id == request.SelectedOptionId.Value);
+                if (selectedOption == null)
+                {
+                    return UnprocessableEntity(new { message = "Selected option is invalid" });
+                }
+            }
+
+            var isTimeout = expired;
+            var isCorrect = !isTimeout && selectedOption != null && selectedOption.IsCorrect;
+            if (!isTimeout && selectedOption == null)
+            {
+                return UnprocessableEntity(new { message = "Option must be provided" });
+            }
+
+            var points = isCorrect ? GetPointsForAttempt(task, attemptNumber) : 0;
+
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+            var taskProgress = await _db.UserTaskProgress
+                .FirstOrDefaultAsync(p => p.UserId == userId && p.TaskId == task.Id, ct);
+
+            if (taskProgress == null)
+            {
+                taskProgress = new UserTaskProgress
+                {
+                    UserId = userId,
+                    LevelId = task.LevelId,
+                    TaskId = task.Id,
+                    AttemptsUsed = 0,
+                    PointsEarned = 0,
+                    IsCompleted = false,
+                    TimeSpentSec = 0,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _db.UserTaskProgress.Add(taskProgress);
+            }
+
+            taskProgress.AttemptsUsed = Math.Max(taskProgress.AttemptsUsed, attemptNumber);
+            taskProgress.UpdatedAt = now;
+
+            if (isCorrect)
+            {
+                taskProgress.PointsEarned = points;
+                taskProgress.IsCompleted = true;
+                taskProgress.CompletedAt = now;
+                taskProgress.TimeSpentSec = timeSpent;
+            }
+            else if (isTimeout)
+            {
+                if (attemptNumber >= maxAttempts)
+                {
+                    taskProgress.IsCompleted = true;
+                    taskProgress.CompletedAt = now;
+                }
+            }
+            else
+            {
+                if (attemptNumber >= maxAttempts)
+                {
+                    taskProgress.IsCompleted = true;
+                    taskProgress.CompletedAt = now;
+                }
+            }
+
+            var log = new TaskAttemptLog
             {
                 UserId = userId,
                 LevelId = task.LevelId,
                 TaskId = task.Id,
-                AttemptsUsed = 0,
-                PointsEarned = 0,
-                IsCompleted = false,
-                TimeSpentSec = 0,
-                CreatedAt = now,
-                UpdatedAt = now
+                AttemptNumber = attemptNumber,
+                IsCorrect = isCorrect,
+                IsTimeout = isTimeout,
+                TimeSpentSec = timeSpent,
+                StartedAt = activeAttempt.AttemptStartAt,
+                SubmittedAt = now,
+                PointsAwarded = points,
+                ShownExplanation = isCorrect,
+                ClientAgent = Request.Headers.UserAgent.ToString(),
+                ClientTz = Request.Headers.TryGetValue("X-Timezone", out var tz) ? tz.ToString() : null,
+                IpHash = null,
+                CreatedAt = now
             };
-            _db.UserTaskProgress.Add(taskProgress);
-        }
+            _db.TaskAttemptLogs.Add(log);
 
-        taskProgress.AttemptsUsed = Math.Max(taskProgress.AttemptsUsed, attemptNumber);
-        taskProgress.UpdatedAt = now;
+            activeAttempt.IsFinalized = true;
+            activeAttempt.UpdatedAt = now;
+            activeAttempt.ExpiresAt = now;
 
-        if (isCorrect)
-        {
-            taskProgress.PointsEarned = points;
-            taskProgress.IsCompleted = true;
-            taskProgress.CompletedAt = now;
-            taskProgress.TimeSpentSec = timeSpent;
-        }
-        else if (isTimeout)
-        {
-            if (attemptNumber >= maxAttempts)
+            var levelProgress = await _db.UserLevelProgress
+                .FirstOrDefaultAsync(p => p.UserId == userId && p.LevelId == task.LevelId, ct);
+
+            if (levelProgress == null)
             {
-                taskProgress.IsCompleted = true;
-                taskProgress.CompletedAt = now;
+                levelProgress = new UserLevelProgress
+                {
+                    UserId = userId,
+                    LevelId = task.LevelId,
+                    Status = LevelProgressStatuses.InProgress,
+                    LastRunScore = 0,
+                    BestScore = 0,
+                    MaxScore = 0,
+                    RunsCount = 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _db.UserLevelProgress.Add(levelProgress);
             }
-        }
-        else
-        {
-            if (attemptNumber >= maxAttempts)
+
+            var allTaskProgress = await _db.UserTaskProgress
+                .Where(p => p.UserId == userId && p.LevelId == task.LevelId)
+                .ToListAsync(ct);
+
+            var levelTasks = await _db.Tasks
+                .Where(t => t.LevelId == task.LevelId && t.Status == PublishStatus.Published)
+                .Select(t => new { t.Id, t.PointsAttempt1 })
+                .ToListAsync(ct);
+
+            var score = allTaskProgress.Sum(p => p.PointsEarned);
+            var completedTasks = allTaskProgress.Count(p => p.IsCompleted);
+            var totalTasks = levelTasks.Count;
+            var maxScore = levelTasks.Sum(t => t.PointsAttempt1);
+
+            levelProgress.LastRunScore = score;
+            levelProgress.MaxScore = maxScore;
+            levelProgress.UpdatedAt = now;
+            levelProgress.LastTaskId = task.Id;
+
+            var levelCompleted = completedTasks >= totalTasks && totalTasks > 0 && allTaskProgress.All(p => p.IsCompleted);
+            LevelSummaryDto? summary = null;
+
+            if (levelCompleted)
             {
-                taskProgress.IsCompleted = true;
-                taskProgress.CompletedAt = now;
+                levelProgress.Status = LevelProgressStatuses.Completed;
+                levelProgress.LastCompletedAt = now;
+                levelProgress.ReplayAvailableAt = now.Add(ReplayCooldown);
+                levelProgress.LastTaskId = null;
+                levelProgress.BestScore = Math.Max(levelProgress.BestScore, score);
+                summary = new LevelSummaryDto
+                {
+                    EarnedScore = score,
+                    MaxScore = maxScore
+                };
+
+                await UpdateLeaderboard(userId, ct);
+                await UpdateSectionProgress(userId, task.Level.SectionId, ct);
             }
-        }
-
-        var log = new TaskAttemptLog
-        {
-            UserId = userId,
-            LevelId = task.LevelId,
-            TaskId = task.Id,
-            AttemptNumber = attemptNumber,
-            IsCorrect = isCorrect,
-            IsTimeout = isTimeout,
-            TimeSpentSec = timeSpent,
-            StartedAt = activeAttempt.AttemptStartAt,
-            SubmittedAt = now,
-            PointsAwarded = points,
-            ShownExplanation = isCorrect,
-            ClientAgent = Request.Headers.UserAgent.ToString(),
-            ClientTz = Request.Headers.TryGetValue("X-Timezone", out var tz) ? tz.ToString() : null,
-            IpHash = null,
-            CreatedAt = now
-        };
-        _db.TaskAttemptLogs.Add(log);
-
-        activeAttempt.IsFinalized = true;
-        activeAttempt.UpdatedAt = now;
-        activeAttempt.ExpiresAt = now;
-
-        var levelProgress = await _db.UserLevelProgress
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.LevelId == task.LevelId, ct);
-
-        if (levelProgress == null)
-        {
-            levelProgress = new UserLevelProgress
+            else
             {
-                UserId = userId,
-                LevelId = task.LevelId,
-                Status = LevelProgressStatuses.InProgress,
-                LastRunScore = 0,
-                BestScore = 0,
-                MaxScore = 0,
-                RunsCount = 1,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            _db.UserLevelProgress.Add(levelProgress);
-        }
+                levelProgress.Status = LevelProgressStatuses.InProgress;
+            }
 
-        var allTaskProgress = await _db.UserTaskProgress
-            .Where(p => p.UserId == userId && p.LevelId == task.LevelId)
-            .ToListAsync(ct);
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
 
-        var levelTasks = await _db.Tasks
-            .Where(t => t.LevelId == task.LevelId && t.Status == PublishStatus.Published)
-            .Select(t => new { t.Id, t.PointsAttempt1 })
-            .ToListAsync(ct);
-
-        var score = allTaskProgress.Sum(p => p.PointsEarned);
-        var completedTasks = allTaskProgress.Count(p => p.IsCompleted);
-        var totalTasks = levelTasks.Count;
-        var maxScore = levelTasks.Sum(t => t.PointsAttempt1);
-
-        levelProgress.LastRunScore = score;
-        levelProgress.MaxScore = maxScore;
-        levelProgress.UpdatedAt = now;
-        levelProgress.LastTaskId = task.Id;
-
-        var levelCompleted = completedTasks >= totalTasks && totalTasks > 0 && allTaskProgress.All(p => p.IsCompleted);
-        LevelSummaryDto? summary = null;
-
-        if (levelCompleted)
-        {
-            levelProgress.Status = LevelProgressStatuses.Completed;
-            levelProgress.LastCompletedAt = now;
-            levelProgress.ReplayAvailableAt = now.Add(ReplayCooldown);
-            levelProgress.LastTaskId = null;
-            levelProgress.BestScore = Math.Max(levelProgress.BestScore, score);
-            summary = new LevelSummaryDto
+            var response = new TaskSubmitResponse
             {
-                EarnedScore = score,
-                MaxScore = maxScore
+                Result = isTimeout ? "timeout" : isCorrect ? "correct" : "incorrect",
+                AttemptNumber = attemptNumber,
+                AttemptsLeft = Math.Max(0, maxAttempts - attemptNumber),
+                PointsEarned = points,
+                TaskCompleted = taskProgress.IsCompleted,
+                LevelCompleted = levelCompleted,
+                LevelSummary = summary,
+                NextAction = "nextTask",
+                ExplanationText = isCorrect ? task.ExplanationText : null,
+                ResultImagePath = task.ResultImagePath,
+                ResultImageSource = task.ResultImageSource,
+                TaskImageSource = task.TaskImageSource
             };
 
-            await UpdateLeaderboard(userId, ct);
-            await UpdateSectionProgress(userId, task.Level.SectionId, ct);
-        }
-        else
-        {
-            levelProgress.Status = LevelProgressStatuses.InProgress;
+            return Ok(response);
         }
 
-        await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-
-        var response = new TaskSubmitResponse
-        {
-            Result = isTimeout ? "timeout" : isCorrect ? "correct" : "incorrect",
-            AttemptNumber = attemptNumber,
-            AttemptsLeft = Math.Max(0, maxAttempts - attemptNumber),
-            PointsEarned = points,
-            TaskCompleted = taskProgress.IsCompleted,
-            LevelCompleted = levelCompleted,
-            LevelSummary = summary,
-            NextAction = "nextTask",
-            ExplanationText = isCorrect ? task.ExplanationText : null,
-            ResultImagePath = task.ResultImagePath,
-            ResultImageSource = task.ResultImageSource,
-            TaskImageSource = task.TaskImageSource
-        };
-
-        return Ok(response);
+        return await strategy.ExecuteAsync(ExecuteCore);
     }
 
     private async Task UpdateLeaderboard(Guid userId, CancellationToken ct)
@@ -379,7 +386,7 @@ public class GameTasksController : ControllerBase
         return Guid.Parse(userIdClaim);
     }
 
-    private static TimeSpan ReplayCooldown => TimeSpan.FromMinutes(5);
+    private static TimeSpan ReplayCooldown => TimeSpan.FromSeconds(30);
 
     private void ApplyNoCacheHeaders()
     {

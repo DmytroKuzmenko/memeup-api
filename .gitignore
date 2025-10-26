@@ -18,3 +18,4 @@ Thumbs.db
 # Env & local
 .env
 uploads/
+fix.patch
