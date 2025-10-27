@@ -7,7 +7,7 @@ namespace Memeup.Api.Controllers;
 
 public sealed class FileUploadRequest
 {
-    /// <summary>Файл изображения (png, jpg, jpeg, webp, gif)</summary>
+    /// <summary>Файл изображения или видео (png, jpg, jpeg, webp, gif, mp4)</summary>
     public IFormFile File { get; set; } = default!;
 }
 
@@ -16,7 +16,7 @@ public sealed class FileUploadRequest
 public class FilesController : ControllerBase
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    { ".png", ".jpg", ".jpeg", ".webp", ".gif" };
+    { ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4" };
 
     private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
 
