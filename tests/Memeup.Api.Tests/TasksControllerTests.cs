@@ -64,8 +64,8 @@ public class TasksControllerTests
             TaskImageSource = "task-source",
             Options =
             [
-                new TaskOptionDto { Label = "Option A", IsCorrect = true },
-                new TaskOptionDto { Label = "Option B", IsCorrect = false }
+                new TaskOptionDto { Label = "Option A", IsCorrect = true, CorrectAnswer = "Answer A" },
+                new TaskOptionDto { Label = "Option B", IsCorrect = false, CorrectAnswer = "Answer B" }
             ],
             OrderIndex = 1,
             TimeLimitSec = 30,
@@ -79,6 +79,8 @@ public class TasksControllerTests
         var created = Assert.IsType<CreatedAtActionResult>(createResult.Result);
         var createdDto = Assert.IsType<TaskDto>(created.Value);
         Assert.Equal(2, createdDto.Options.Length);
+        Assert.Contains(createdDto.Options, o => o.Label == "Option A" && o.CorrectAnswer == "Answer A");
+        Assert.Contains(createdDto.Options, o => o.Label == "Option B" && o.CorrectAnswer == "Answer B");
         var updateDto = new TaskUpdateDto
         {
             Status = 0,
@@ -91,7 +93,7 @@ public class TasksControllerTests
             TaskImageSource = "updated-task-source",
             Options =
             [
-                new TaskOptionDto { Label = "Updated Option", IsCorrect = true, ImageUrl = "option.png" }
+                new TaskOptionDto { Label = "Updated Option", IsCorrect = true, ImageUrl = "option.png", CorrectAnswer = "New Answer" }
             ],
             OrderIndex = 2,
             TimeLimitSec = 45,
@@ -109,6 +111,7 @@ public class TasksControllerTests
         Assert.Equal("Updated Option", updatedDto.Options[0].Label);
         Assert.Equal("option.png", updatedDto.Options[0].ImageUrl);
         Assert.True(updatedDto.Options[0].IsCorrect);
+        Assert.Equal("New Answer", updatedDto.Options[0].CorrectAnswer);
         Assert.Equal("updated-result-path", updatedDto.ResultImagePath);
         Assert.Equal("updated-result-source", updatedDto.ResultImageSource);
         Assert.Equal("updated-task-source", updatedDto.TaskImageSource);
@@ -120,6 +123,7 @@ public class TasksControllerTests
         Assert.Equal("Updated Option", entity.Options.First().Label);
         Assert.Equal("option.png", entity.Options.First().ImageUrl);
         Assert.True(entity.Options.First().IsCorrect);
+        Assert.Equal("New Answer", entity.Options.First().CorrectAnswer);
         Assert.Equal("updated-result-path", entity.ResultImagePath);
         Assert.Equal("updated-result-source", entity.ResultImageSource);
         Assert.Equal("updated-task-source", entity.TaskImageSource);
@@ -175,8 +179,8 @@ public class TasksControllerTests
             TaskImageSource = "task-source",
             Options =
             [
-                new TaskOptionDto { Label = "Option A", IsCorrect = true },
-                new TaskOptionDto { Label = "Option B", IsCorrect = false }
+                new TaskOptionDto { Label = "Option A", IsCorrect = true, CorrectAnswer = "Answer A" },
+                new TaskOptionDto { Label = "Option B", IsCorrect = false, CorrectAnswer = "Answer B" }
             ],
             OrderIndex = 1,
             TimeLimitSec = 30,
@@ -205,9 +209,9 @@ public class TasksControllerTests
             TaskImageSource = "updated-task-source",
             Options =
             [
-                new TaskOptionDto { Id = existingId, Label = "Option A updated", IsCorrect = false },
-                new TaskOptionDto { Label = "Option C", IsCorrect = true },
-                new TaskOptionDto { Id = Guid.Empty, Label = "Option D", IsCorrect = false }
+                new TaskOptionDto { Id = existingId, Label = "Option A updated", IsCorrect = false, CorrectAnswer = "Answer A updated" },
+                new TaskOptionDto { Label = "Option C", IsCorrect = true, CorrectAnswer = "Answer C" },
+                new TaskOptionDto { Id = Guid.Empty, Label = "Option D", IsCorrect = false, CorrectAnswer = "Answer D" }
             ],
             OrderIndex = 2,
             TimeLimitSec = 45,
@@ -224,14 +228,17 @@ public class TasksControllerTests
         Assert.Equal(3, updatedDto.Options.Length);
         var updatedExisting = Assert.Single(updatedDto.Options.Where(o => o.Label == "Option A updated"));
         Assert.Equal(existingId, updatedExisting.Id);
+        Assert.Equal("Answer A updated", updatedExisting.CorrectAnswer);
 
         var createdOption = Assert.Single(updatedDto.Options.Where(o => o.Label == "Option C"));
         Assert.NotEqual(Guid.Empty, createdOption.Id);
         Assert.NotEqual(existingId, createdOption.Id);
+        Assert.Equal("Answer C", createdOption.CorrectAnswer);
 
         var createdFromEmptyId = Assert.Single(updatedDto.Options.Where(o => o.Label == "Option D"));
         Assert.NotEqual(Guid.Empty, createdFromEmptyId.Id);
         Assert.NotEqual(existingId, createdFromEmptyId.Id);
+        Assert.Equal("Answer D", createdFromEmptyId.CorrectAnswer);
 
         var entity = await context.Tasks
             .Include(t => t.Options)
@@ -239,7 +246,7 @@ public class TasksControllerTests
 
         Assert.Equal(3, entity.Options.Count);
         Assert.Contains(entity.Options, o => o.Id == existingId && o.Label == "Option A updated");
-        Assert.Contains(entity.Options, o => o.Label == "Option C");
-        Assert.Contains(entity.Options, o => o.Label == "Option D");
+        Assert.Contains(entity.Options, o => o.Label == "Option C" && o.CorrectAnswer == "Answer C");
+        Assert.Contains(entity.Options, o => o.Label == "Option D" && o.CorrectAnswer == "Answer D");
     }
 }

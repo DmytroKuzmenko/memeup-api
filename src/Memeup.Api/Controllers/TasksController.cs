@@ -89,7 +89,8 @@ public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
             Id = (o.Id.HasValue && o.Id.Value != Guid.Empty) ? o.Id : null,
             o.Label,
             o.IsCorrect,
-            o.ImageUrl
+            o.ImageUrl,
+            o.CorrectAnswer
         })
         .ToList();
 
@@ -109,8 +110,6 @@ public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
         task.ResultImagePath = dto.ResultImagePath;
         task.ResultImageSource = dto.ResultImageSource;
         task.TaskImageSource = dto.TaskImageSource;
-        task.CharsCsv = dto.CharsCsv;
-        task.CorrectAnswer = dto.CorrectAnswer;
         task.OrderIndex = dto.OrderIndex;
         task.TimeLimitSec = dto.TimeLimitSec;
         task.PointsAttempt1 = dto.PointsAttempt1;
@@ -158,6 +157,7 @@ public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
                 exist.Label = inc.Label;
                 exist.IsCorrect = inc.IsCorrect;
                 exist.ImageUrl = inc.ImageUrl;
+                exist.CorrectAnswer = inc.CorrectAnswer;
 
                 // ЯВНО: изменяемая зависимая
                 _db.Entry(exist).State = EntityState.Modified;
@@ -169,7 +169,8 @@ public async Task<ActionResult<TaskDto>> Update(Guid id, TaskUpdateDto dto)
                     Id = Guid.NewGuid(),
                     Label = inc.Label,
                     IsCorrect = inc.IsCorrect,
-                    ImageUrl = inc.ImageUrl
+                    ImageUrl = inc.ImageUrl,
+                    CorrectAnswer = inc.CorrectAnswer
                 };
                 entity.Options.Add(created);
 

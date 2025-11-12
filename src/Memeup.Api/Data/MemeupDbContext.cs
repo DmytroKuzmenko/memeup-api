@@ -42,12 +42,6 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     taskEntity.Property(t => t.TaskImageSource)
         .HasMaxLength(1024);
 
-    taskEntity.Property(t => t.CharsCsv)
-        .HasMaxLength(1024);
-
-    taskEntity.Property(t => t.CorrectAnswer)
-        .HasMaxLength(1024);
-
     taskEntity.OwnsMany(t => t.Options, owned =>
     {
         owned.ToTable("TaskOptions");
@@ -71,6 +65,9 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
         owned.Property(o => o.IsCorrect);
 
         owned.Property(o => o.ImageUrl)
+             .HasMaxLength(1024);
+
+        owned.Property(o => o.CorrectAnswer)
              .HasMaxLength(1024);
     });
 

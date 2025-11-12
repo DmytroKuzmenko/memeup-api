@@ -14,8 +14,6 @@ public class TaskDto
     public string? ResultImagePath { get; set; }
     public string? ResultImageSource { get; set; }
     public string? TaskImageSource { get; set; }
-    public string? CharsCsv { get; set; }
-    public string? CorrectAnswer { get; set; }
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
     public int OrderIndex { get; set; }
     public int? TimeLimitSec { get; set; }
@@ -33,6 +31,7 @@ public class TaskOptionDto
     public string Label { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
     public string? ImageUrl { get; set; }
+    public string CorrectAnswer { get; set; } = string.Empty;
 }
 
 public class TaskCreateDto
@@ -61,12 +60,6 @@ public class TaskCreateDto
 
     [StringLength(1024)]
     public string? TaskImageSource { get; set; }
-
-    [StringLength(1024)]
-    public string? CharsCsv { get; set; }
-
-    [StringLength(1024)]
-    public string? CorrectAnswer { get; set; }
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
 
     public int OrderIndex { get; set; } = 0;
@@ -104,12 +97,6 @@ public class TaskUpdateDto
 
     [StringLength(1024)]
     public string? TaskImageSource { get; set; }
-
-    [StringLength(1024)]
-    public string? CharsCsv { get; set; }
-
-    [StringLength(1024)]
-    public string? CorrectAnswer { get; set; }
 
     public TaskOptionDto[] Options { get; set; } = Array.Empty<TaskOptionDto>();
     

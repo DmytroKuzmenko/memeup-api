@@ -26,12 +26,6 @@ public class TaskItem : BaseEntity
     [StringLength(1024)]
     public string? TaskImageSource { get; set; }
 
-    [StringLength(1024)]
-    public string? CharsCsv { get; set; }
-
-    [StringLength(1024)]
-    public string? CorrectAnswer { get; set; }
-
     public ICollection<TaskOption> Options { get; set; } = new List<TaskOption>();
     public int OrderIndex { get; set; } = 0;
     public int? TimeLimitSec { get; set; }
