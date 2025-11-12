@@ -689,6 +689,10 @@ namespace Memeup.Api.Migrations
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("uuid");
 
+                            b1.Property<string>("CorrectAnswer")
+                                .HasMaxLength(1024)
+                                .HasColumnType("character varying(1024)");
+
                             b1.Property<string>("ImageUrl")
                                 .HasMaxLength(1024)
                                 .HasColumnType("character varying(1024)");
