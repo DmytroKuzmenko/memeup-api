@@ -1,0 +1,10 @@
+{
+  "name": "dotnet-docker-runner",
+  "private": true,
+  "scripts": {
+    "prestart": "dotnet restore",
+    "start": "dotnet build && echo ✅ .NET build done && docker compose build api && echo ✅ Docker build done && docker compose up -d && echo 🚀 Containers running",
+    "down": "docker compose down",
+    "restart": "docker compose up -d --build"
+}
+}
