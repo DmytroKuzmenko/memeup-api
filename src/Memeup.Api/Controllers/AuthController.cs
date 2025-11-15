@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddMinutes(int.Parse(_config["JWT:LifetimeMinutes"] ?? "60"));
+        var expires = DateTime.UtcNow.AddMinutes(int.Parse(_config["JWT:LifetimeMinutes"] ?? "360"));
 
         var token = new JwtSecurityToken(
             issuer: _config["JWT:Issuer"],

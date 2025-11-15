@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -79,38 +80,84 @@ public class GameTasksController : ControllerBase
                 return BadRequest(new { message = "Attempt token does not match level" });
             }
 
+            var optionsLookup = task.Options.ToDictionary(o => o.Id, o => o);
+            var requiresTextAnswer = task.Type == TaskType.BuildWord;
+
+            var selectedTextOptions = (request.SelectedOptions ?? Array.Empty<TaskSubmitSelectionDto>())
+                .Where(o => o.SelectedOptionId != Guid.Empty)
+                .GroupBy(o => o.SelectedOptionId)
+                .Select(g => g.Last())
+                .ToList();
+
+            var selectedOptionIds = (request.SelectedOptionIds ?? Array.Empty<Guid>())
+                .Where(id => id != Guid.Empty)
+                .Concat(selectedTextOptions.Select(o => o.SelectedOptionId))
+                .Distinct()
+                .ToList();
+
             var maxAttempts = CalculateMaxAttempts(task);
             var attemptNumber = Math.Min(activeAttempt.AttemptNumber, maxAttempts);
 
             var expired = activeAttempt.ExpiresAt != DateTimeOffset.MaxValue && now > activeAttempt.ExpiresAt;
             var timeSpent = (int)Math.Max(0, Math.Round((now - activeAttempt.AttemptStartAt).TotalSeconds));
 
-            var selectedOptionIds = (request.SelectedOptionIds ?? Array.Empty<Guid>())
-                .Where(id => id != Guid.Empty)
-                .Distinct()
-                .ToList();
-
             if (!selectedOptionIds.Any() && !expired)
             {
                 return UnprocessableEntity(new { message = "At least one option must be provided" });
             }
 
-            var invalidOptionId = selectedOptionIds.FirstOrDefault(id => task.Options.All(o => o.Id != id));
+            if (requiresTextAnswer && !expired)
+            {
+                if (!selectedTextOptions.Any())
+                {
+                    return UnprocessableEntity(new { message = "Text answer must be provided" });
+                }
+
+                if (selectedTextOptions.Any(o => string.IsNullOrWhiteSpace(o.Text)))
+                {
+                    return UnprocessableEntity(new { message = "Text answer must be provided" });
+                }
+            }
+
+            var invalidOptionId = selectedOptionIds.FirstOrDefault(id => !optionsLookup.ContainsKey(id));
             if (invalidOptionId != Guid.Empty)
             {
                 return UnprocessableEntity(new { message = "Selected option is invalid" });
             }
 
-            var correctOptionIds = task.Options
+            var correctOptionIds = optionsLookup.Values
                 .Where(o => o.IsCorrect)
                 .Select(o => o.Id)
                 .ToList();
 
             var isTimeout = expired;
-            var isCorrect = !isTimeout
-                && correctOptionIds.Any()
-                && selectedOptionIds.Count == correctOptionIds.Count
-                && !selectedOptionIds.Except(correctOptionIds).Any();
+            var isCorrect = false;
+
+            if (!isTimeout && correctOptionIds.Any())
+            {
+                if (requiresTextAnswer)
+                {
+                    var idsMatch = selectedOptionIds.Count == correctOptionIds.Count
+                        && !selectedOptionIds.Except(correctOptionIds).Any();
+
+                    var textMatches = idsMatch
+                        && selectedTextOptions.Count == selectedOptionIds.Count
+                        && selectedTextOptions.All(selection =>
+                            optionsLookup.TryGetValue(selection.SelectedOptionId, out var option)
+                            && !string.IsNullOrWhiteSpace(option.CorrectAnswer)
+                            && string.Equals(
+                                (selection.Text ?? string.Empty).Trim(),
+                                option.CorrectAnswer.Trim(),
+                                StringComparison.OrdinalIgnoreCase));
+
+                    isCorrect = textMatches;
+                }
+                else
+                {
+                    isCorrect = selectedOptionIds.Count == correctOptionIds.Count
+                        && !selectedOptionIds.Except(correctOptionIds).Any();
+                }
+            }
 
             var points = isCorrect ? GetPointsForAttempt(task, attemptNumber) : 0;
 

@@ -36,7 +36,7 @@ public class LevelLockingServiceTests
         var statuses = LevelLockingService.ComputeStatuses(new[] { level1, level2, level3 });
 
         Assert.Equal(LevelProgressStatuses.InProgress, statuses[level1.LevelId]);
-        Assert.Equal(LevelProgressStatuses.NotStarted, statuses[level2.LevelId]);
+        Assert.Equal(LevelProgressStatuses.Locked, statuses[level2.LevelId]);
         Assert.Equal(LevelProgressStatuses.Locked, statuses[level3.LevelId]);
     }
 

@@ -173,10 +173,22 @@ public class TaskDeliveryResponse
     public LevelProgressDto LevelProgress { get; set; } = new();
 }
 
+public class TaskSubmitSelectionDto
+{
+    [JsonPropertyName("selectedOptionId")]
+    public Guid SelectedOptionId { get; set; }
+
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+}
+
 public class TaskSubmitRequest
 {
     [JsonPropertyName("selectedOptionIds")]
     public IReadOnlyCollection<Guid> SelectedOptionIds { get; set; } = Array.Empty<Guid>();
+
+    [JsonPropertyName("selectedOptions")]
+    public IReadOnlyCollection<TaskSubmitSelectionDto> SelectedOptions { get; set; } = Array.Empty<TaskSubmitSelectionDto>();
 
     [JsonPropertyName("attemptToken")]
     public Guid AttemptToken { get; set; }

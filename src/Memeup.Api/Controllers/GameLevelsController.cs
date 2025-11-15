@@ -199,12 +199,25 @@ public class GameLevelsController : ControllerBase
             return BadRequest(new { message = "Level has no published tasks" });
         }
 
+        var maxScore = tasks.Sum(t => t.PointsAttempt1);
         var progress = await _db.UserLevelProgress
             .FirstOrDefaultAsync(p => p.UserId == userId && p.LevelId == levelId, ct);
 
         if (progress == null)
         {
-            return LevelLocked();
+            var now = DateTimeOffset.UtcNow;
+            progress = new UserLevelProgress
+            {
+                UserId = userId,
+                LevelId = levelId,
+                Status = LevelProgressStatuses.InProgress,
+                MaxScore = maxScore,
+                RunsCount = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _db.UserLevelProgress.Add(progress);
+            await _db.SaveChangesAsync(ct);
         }
 
         if (progress.Status == LevelProgressStatuses.Completed)
@@ -304,12 +317,15 @@ public class GameLevelsController : ControllerBase
 
     private async Task<List<TaskItem>> LoadOrderedTasks(Guid levelId, CancellationToken ct)
     {
-        return await _db.Tasks
+        var tasks = await _db.Tasks
             .Where(t => t.LevelId == levelId && t.Status == PublishStatus.Published)
-            .OrderBy(t => t.OrderIndex)
-            .ThenBy(t => t.CreatedAt)
             .Include(t => t.Options)
             .ToListAsync(ct);
+
+        return tasks
+            .OrderBy(t => t.OrderIndex)
+            .ThenBy(t => t.CreatedAt)
+            .ToList();
     }
 
     private async Task<TaskDeliveryResponse> DeliverNextTask(Guid userId, Level level, IReadOnlyList<TaskItem> tasks, UserLevelProgress progress, CancellationToken ct)
