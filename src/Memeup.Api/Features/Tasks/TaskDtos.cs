@@ -43,8 +43,8 @@ public class TaskCreateDto
 
     public string? InternalName { get; set; }
 
-    /// <summary>0=BuildWord,1=PickImage,2=PickText,3=MemeTask</summary>
-    [Range(0, 3)] public int Type { get; set; } = 3;
+    /// <summary>0=BuildWord,1=PickImage,2=PickText,3=GapFill,4=Matching</summary>
+    [Range(0, 4)] public int Type { get; set; } = 3;
 
     [StringLength(2000)]
     public string? HeaderText { get; set; }
@@ -80,8 +80,8 @@ public class TaskUpdateDto
 
     public string? InternalName { get; set; }
 
-    /// <summary>0=BuildWord,1=PickImage,2=PickText,3=MemeTask</summary>
-    [Range(0, 3)] public int Type { get; set; } = 3;
+    /// <summary>0=BuildWord,1=PickImage,2=PickText,3=GapFill,4=Matching</summary>
+    [Range(0, 4)] public int Type { get; set; } = 3;
 
     [StringLength(2000)]
     public string? HeaderText { get; set; }
