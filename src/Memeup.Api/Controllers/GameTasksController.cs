@@ -10,6 +10,7 @@ using Memeup.Api.Domain.Enums;
 using Memeup.Api.Domain.Game;
 using Memeup.Api.Domain.Tasks;
 using Memeup.Api.Features.Game;
+using Microsoft.Extensions.Options;
 
 namespace Memeup.Api.Controllers;
 
@@ -19,10 +20,12 @@ namespace Memeup.Api.Controllers;
 public class GameTasksController : ControllerBase
 {
     private readonly MemeupDbContext _db;
+    private readonly GameTaskOptions _taskOptions;
 
-    public GameTasksController(MemeupDbContext db)
+    public GameTasksController(MemeupDbContext db, IOptionsSnapshot<GameTaskOptions> taskOptions)
     {
         _db = db;
+        _taskOptions = taskOptions.Value;
     }
 
     [HttpPost("{taskId:guid}/submit")]
@@ -130,10 +133,11 @@ public class GameTasksController : ControllerBase
                 .Select(o => o.Id)
                 .ToList();
 
-            var isTimeout = expired;
-            var isCorrect = false;
+            var forceCorrect = _taskOptions.ForceCorrectAnswers;
+            var isTimeout = !forceCorrect && expired;
+            var isCorrect = forceCorrect;
 
-            if (!isTimeout && correctOptionIds.Any())
+            if (!forceCorrect && !isTimeout && correctOptionIds.Any())
             {
                 if (requiresTextAnswer)
                 {

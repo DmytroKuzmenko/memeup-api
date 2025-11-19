@@ -11,6 +11,7 @@ using Memeup.Api.Domain.Auth;
 using Microsoft.Extensions.FileProviders;
 using HealthChecks.NpgSql;
 using Memeup.Api.Features.Sections;
+using Memeup.Api.Features.Game;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddAutoMapper(typeof(SectionMappingProfile).Assembly);
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.Configure<GameTaskOptions>(builder.Configuration.GetSection("GameTasks"));
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Memeup API", Version = "v1" });
