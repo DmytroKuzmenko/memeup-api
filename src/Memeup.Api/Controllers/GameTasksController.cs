@@ -84,7 +84,7 @@ public class GameTasksController : ControllerBase
             }
 
             var optionsLookup = task.Options.ToDictionary(o => o.Id, o => o);
-            var requiresTextAnswer = task.Type == TaskType.BuildWord;
+            var requiresTextAnswer = task.Type == TaskType.Anagram;
 
             var selectedTextOptions = (request.SelectedOptions ?? Array.Empty<TaskSubmitSelectionDto>())
                 .Where(o => o.SelectedOptionId != Guid.Empty)

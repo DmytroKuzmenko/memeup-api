@@ -2,8 +2,9 @@ namespace Memeup.Api.Domain.Enums;
 
 public enum TaskType
 {
-    BuildWord = 0,
-    PickImage = 1,
-    PickText  = 2,
-    MemeTask  = 3
+    Anagram = 0,
+    ImageChoice = 1,
+    TextChoice  = 2,
+    GapFill  = 3,
+    Matching = 4
 }

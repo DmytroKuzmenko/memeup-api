@@ -11,7 +11,7 @@ public class TaskItem : BaseEntity
     public Level Level { get; set; } = default!;
 
     public string? InternalName { get; set; }
-    public TaskType Type { get; set; } = TaskType.MemeTask;
+    public TaskType Type { get; set; } = TaskType.TextChoice;
 
     public string? HeaderText { get; set; }
     [StringLength(1024)]
