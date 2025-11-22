@@ -23,6 +23,7 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<UserSectionProgress> UserSectionProgress => Set<UserSectionProgress>();
     public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
     public DbSet<ActiveTaskAttempt> ActiveTaskAttempts => Set<ActiveTaskAttempt>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder b)
 {
@@ -109,6 +110,17 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     {
         entity.HasIndex(x => x.Token).IsUnique();
         entity.HasIndex(x => new { x.UserId, x.TaskId, x.IsFinalized });
+    });
+
+    b.Entity<RefreshToken>(entity =>
+    {
+        entity.HasIndex(x => x.TokenHash).IsUnique();
+        entity.Property(x => x.TokenHash).HasMaxLength(256).IsRequired();
+        entity.Property(x => x.UsageCount).HasDefaultValue(0);
+        entity.HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     });
 }
 

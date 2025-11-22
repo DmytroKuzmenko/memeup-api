@@ -14,6 +14,7 @@ using Memeup.Api.Features.Sections;
 using Memeup.Api.Features.Game;
 
 var builder = WebApplication.CreateBuilder(args);
+var skipRuntimeBootstrapping = string.Equals(builder.Environment.EnvironmentName, "DesignTime", StringComparison.OrdinalIgnoreCase);
 
 // ----- Serilog -----
 Log.Logger = new LoggerConfiguration()
@@ -143,61 +144,69 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // ---- Миграции (всегда) + опционально "только миграции и выйти"
-using (var scope = app.Services.CreateScope())
+if (!skipRuntimeBootstrapping)
 {
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var db = scope.ServiceProvider.GetRequiredService<MemeupDbContext>();
-        // Применяем все миграции при обычном запуске
-        await db.Database.MigrateAsync();
-        Log.Information("Database migrations applied");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Failed to apply migrations on startup");
-        throw;
-    }
-}
-
-// Если запрошен режим "только миграции" — выходим
-var runMigrationsOnly = args.Contains("--migrate", StringComparer.OrdinalIgnoreCase)
-                        || string.Equals(builder.Configuration["RUN_MIGRATIONS"], "1", StringComparison.Ordinal);
-if (runMigrationsOnly)
-{
-    Log.Information("RUN_MIGRATIONS flag detected. Exiting after migrations.");
-    return; // завершить процесс
-}
-
-// ---- Сидинг администратора ----
-using (var scope = app.Services.CreateScope())
-{
-    var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-
-    var adminEmail = builder.Configuration["ADMIN_EMAIL"];
-    var adminPassword = builder.Configuration["ADMIN_PASSWORD"];
-
-    if (!string.IsNullOrEmpty(adminEmail) && !string.IsNullOrEmpty(adminPassword))
-    {
-        if (!await roleMgr.RoleExistsAsync("Admin"))
-            await roleMgr.CreateAsync(new IdentityRole<Guid>("Admin"));
-
-        var admin = await userMgr.FindByEmailAsync(adminEmail);
-        if (admin == null)
+        try
         {
-            admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
-            var result = await userMgr.CreateAsync(admin, adminPassword);
-            if (result.Succeeded)
+            var db = scope.ServiceProvider.GetRequiredService<MemeupDbContext>();
+            // Применяем все миграции при обычном запуске
+            await db.Database.MigrateAsync();
+            Log.Information("Database migrations applied");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to apply migrations on startup");
+            throw;
+        }
+    }
+
+    // Если запрошен режим "только миграции" — выходим
+    var runMigrationsOnly = args.Contains("--migrate", StringComparer.OrdinalIgnoreCase)
+                            || string.Equals(builder.Configuration["RUN_MIGRATIONS"], "1", StringComparison.Ordinal);
+    if (runMigrationsOnly)
+    {
+        Log.Information("RUN_MIGRATIONS flag detected. Exiting after migrations.");
+        return; // завершить процесс
+    }
+
+    // ---- Сидинг администратора ----
+    using (var scope = app.Services.CreateScope())
+    {
+        var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+        var adminEmail = builder.Configuration["ADMIN_EMAIL"];
+        var adminPassword = builder.Configuration["ADMIN_PASSWORD"];
+
+        if (!string.IsNullOrEmpty(adminEmail) && !string.IsNullOrEmpty(adminPassword))
+        {
+            if (!await roleMgr.RoleExistsAsync("Admin"))
+                await roleMgr.CreateAsync(new IdentityRole<Guid>("Admin"));
+
+            var admin = await userMgr.FindByEmailAsync(adminEmail);
+            if (admin == null)
             {
-                await userMgr.AddToRoleAsync(admin, "Admin");
-                Log.Information("Seeded admin user {Email}", adminEmail);
-            }
-            else
-            {
-                Log.Error("Failed to create admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+                var result = await userMgr.CreateAsync(admin, adminPassword);
+                if (result.Succeeded)
+                {
+                    await userMgr.AddToRoleAsync(admin, "Admin");
+                    Log.Information("Seeded admin user {Email}", adminEmail);
+                }
+                else
+                {
+                    Log.Error("Failed to create admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
             }
         }
     }
+}
+
+if (skipRuntimeBootstrapping)
+{
+    return;
 }
 
 app.Run();
