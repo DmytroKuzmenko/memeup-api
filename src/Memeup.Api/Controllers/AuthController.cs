@@ -138,6 +138,38 @@ public class AuthController : ControllerBase
         return Ok(new AuthResponse(token, expiresAt, newRefreshToken));
     }
 
+    [HttpDelete("{login}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteUser(string login)
+    {
+        if (string.IsNullOrWhiteSpace(login))
+        {
+            return BadRequest(new { message = "LoginRequired" });
+        }
+
+        var user = await _userManager.FindByNameAsync(login);
+        if (user == null)
+        {
+            user = await _userManager.FindByEmailAsync(login);
+        }
+
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        await RemoveOtherTokensAsync(user.Id);
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            return StatusCode(500, new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<(string Token, DateTime ExpiresAt)> GenerateJwtTokenAsync(ApplicationUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);
