@@ -141,7 +141,7 @@ public class AuthController : ControllerBase
 
     [HttpDelete("{login}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> DeleteUser(string login) //delete by username or email
+    public async Task<IActionResult> DeleteUser(string login) 
     {
         if (string.IsNullOrWhiteSpace(login))
         {
