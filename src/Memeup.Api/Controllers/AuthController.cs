@@ -138,9 +138,10 @@ public class AuthController : ControllerBase
         return Ok(new AuthResponse(token, expiresAt, newRefreshToken));
     }
 
+
     [HttpDelete("{login}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> DeleteUser(string login)
+    public async Task<IActionResult> DeleteUser(string login) //delete by username or email
     {
         if (string.IsNullOrWhiteSpace(login))
         {
