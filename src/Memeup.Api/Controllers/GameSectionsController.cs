@@ -120,16 +120,29 @@ public class GameSectionsController : ControllerBase
         ApplyNoCacheHeaders();
         var userId = GetCurrentUserId();
 
+        var targetSectionId = sectionId;
+
         var sectionExists = await _db.Sections
             .AnyAsync(s => s.Id == sectionId && s.Status == PublishStatus.Published, ct);
 
         if (!sectionExists)
         {
-            return NotFound();
+            // Some callers provide the level id instead of the section id; resolve it back to the section.
+            var resolvedSectionId = await _db.Levels
+                .Where(l => l.Id == sectionId && l.Status == PublishStatus.Published)
+                .Select(l => (Guid?)l.SectionId)
+                .FirstOrDefaultAsync(ct);
+
+            if (resolvedSectionId is null)
+            {
+                return NotFound();
+            }
+
+            targetSectionId = resolvedSectionId.Value;
         }
 
         var levels = await _db.Levels
-            .Where(l => l.SectionId == sectionId && l.Status == PublishStatus.Published)
+            .Where(l => l.SectionId == targetSectionId && l.Status == PublishStatus.Published)
             .OrderBy(l => l.OrderIndex).ThenBy(l => l.Name)
             .Select(l => new
             {
