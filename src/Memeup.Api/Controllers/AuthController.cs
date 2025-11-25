@@ -48,9 +48,9 @@ public class AuthController : ControllerBase
         var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
         if (!result.Succeeded) return Unauthorized();
 
-        //await RemoveOtherTokensAsync(user.Id);
-        //var refreshToken = await IssueRefreshTokenAsync(user);
-        var refreshToken = "";
+        await RemoveOtherTokensAsync(user.Id);
+        var refreshToken = await IssueRefreshTokenAsync(user);
+        //var refreshToken = "";
         var (token, expiresAt) = await GenerateJwtTokenAsync(user);
         await _db.SaveChangesAsync();
 
