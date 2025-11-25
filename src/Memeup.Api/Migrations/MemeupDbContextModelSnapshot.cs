@@ -572,6 +572,58 @@ namespace Memeup.Api.Migrations
                     b.ToTable("Tasks");
                 });
 
+            modelBuilder.Entity("Memeup.Api.Domain.Surveys.SurveyAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("QuestionId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("SurveyResponseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SurveyResponseId");
+
+                    b.ToTable("SurveyAnswers");
+                });
+
+            modelBuilder.Entity("Memeup.Api.Domain.Surveys.SurveyResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SurveyId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SurveyId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("SurveyResponses");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -772,6 +824,17 @@ namespace Memeup.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Memeup.Api.Domain.Surveys.SurveyAnswer", b =>
+                {
+                    b.HasOne("Memeup.Api.Domain.Surveys.SurveyResponse", "SurveyResponse")
+                        .WithMany("Answers")
+                        .HasForeignKey("SurveyResponseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SurveyResponse");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -831,6 +894,11 @@ namespace Memeup.Api.Migrations
             modelBuilder.Entity("Memeup.Api.Domain.Sections.Section", b =>
                 {
                     b.Navigation("Levels");
+                });
+
+            modelBuilder.Entity("Memeup.Api.Domain.Surveys.SurveyResponse", b =>
+                {
+                    b.Navigation("Answers");
                 });
 #pragma warning restore 612, 618
         }

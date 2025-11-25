@@ -7,6 +7,7 @@ using Memeup.Api.Domain.Sections;
 using Memeup.Api.Domain.Levels;
 using Memeup.Api.Domain.Tasks;
 using Memeup.Api.Domain.Game;
+using Memeup.Api.Domain.Surveys;
 
 namespace Memeup.Api.Data;
 
@@ -24,105 +25,126 @@ public class MemeupDbContext : IdentityDbContext<ApplicationUser, IdentityRole<G
     public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
     public DbSet<ActiveTaskAttempt> ActiveTaskAttempts => Set<ActiveTaskAttempt>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
+    public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
 
     protected override void OnModelCreating(ModelBuilder b)
-{
-    base.OnModelCreating(b);
-
-    var taskEntity = b.Entity<TaskItem>();
-
-    taskEntity.Property(t => t.ImageUrl)
-        .HasMaxLength(1024);
-
-    taskEntity.Property(t => t.ResultImagePath)
-        .HasMaxLength(1024);
-
-    taskEntity.Property(t => t.ResultImageSource)
-        .HasMaxLength(1024);
-
-    taskEntity.Property(t => t.TaskImageSource)
-        .HasMaxLength(1024);
-
-    taskEntity.OwnsMany(t => t.Options, owned =>
     {
-        owned.ToTable("TaskOptions");
+        base.OnModelCreating(b);
 
-        // FK к владельцу
-        owned.WithOwner()
-             .HasForeignKey("TaskItemId");
+        var taskEntity = b.Entity<TaskItem>();
 
-        // Ключ зависимой
-        owned.HasKey(o => o.Id);
+        taskEntity.Property(t => t.ImageUrl)
+            .HasMaxLength(1024);
 
-        // Генерация Id на клиенте допустима (мы задаём Guid.NewGuid() в коде)
-        // ValueGeneratedOnAdd оставляем — EF не будет конфликтовать.
-        owned.Property(o => o.Id)
-             .ValueGeneratedOnAdd();
+        taskEntity.Property(t => t.ResultImagePath)
+            .HasMaxLength(1024);
 
-        owned.Property(o => o.Label)
-             .HasMaxLength(1024)
-             .IsRequired();
+        taskEntity.Property(t => t.ResultImageSource)
+            .HasMaxLength(1024);
 
-        owned.Property(o => o.IsCorrect);
+        taskEntity.Property(t => t.TaskImageSource)
+            .HasMaxLength(1024);
 
-        owned.Property(o => o.ImageUrl)
-             .HasMaxLength(1024);
+        taskEntity.OwnsMany(t => t.Options, owned =>
+        {
+            owned.ToTable("TaskOptions");
 
-        owned.Property(o => o.CorrectAnswer)
-             .HasMaxLength(1024);
-    });
+            // FK к владельцу
+            owned.WithOwner()
+                 .HasForeignKey("TaskItemId");
 
-    taskEntity.Navigation(t => t.Options).AutoInclude();
+            // Ключ зависимой
+            owned.HasKey(o => o.Id);
 
-    b.Entity<UserTaskProgress>(entity =>
-    {
-        entity.HasIndex(x => new { x.UserId, x.TaskId }).IsUnique();
-        entity.Property(x => x.PointsEarned).HasDefaultValue(0);
-        entity.Property(x => x.AttemptsUsed).HasDefaultValue(0);
-    });
+            // Генерация Id на клиенте допустима (мы задаём Guid.NewGuid() в коде)
+            // ValueGeneratedOnAdd оставляем — EF не будет конфликтовать.
+            owned.Property(o => o.Id)
+                 .ValueGeneratedOnAdd();
 
-    b.Entity<TaskAttemptLog>(entity =>
-    {
-        entity.HasIndex(x => new { x.UserId, x.TaskId });
-        entity.Property(x => x.ClientAgent).HasMaxLength(1024);
-        entity.Property(x => x.ClientTz).HasMaxLength(128);
-        entity.Property(x => x.IpHash).HasMaxLength(256);
-    });
+            owned.Property(o => o.Label)
+                 .HasMaxLength(1024)
+                 .IsRequired();
 
-    b.Entity<UserLevelProgress>(entity =>
-    {
-        entity.HasIndex(x => new { x.UserId, x.LevelId }).IsUnique();
-        entity.Property(x => x.Status).HasMaxLength(32);
-    });
+            owned.Property(o => o.IsCorrect);
 
-    b.Entity<UserSectionProgress>(entity =>
-    {
-        entity.HasIndex(x => new { x.UserId, x.SectionId }).IsUnique();
-    });
+            owned.Property(o => o.ImageUrl)
+                 .HasMaxLength(1024);
 
-    b.Entity<LeaderboardEntry>(entity =>
-    {
-        entity.HasIndex(x => new { x.UserId, x.Period }).IsUnique();
-        entity.Property(x => x.Period).HasMaxLength(32);
-    });
+            owned.Property(o => o.CorrectAnswer)
+                 .HasMaxLength(1024);
+        });
 
-    b.Entity<ActiveTaskAttempt>(entity =>
-    {
-        entity.HasIndex(x => x.Token).IsUnique();
-        entity.HasIndex(x => new { x.UserId, x.TaskId, x.IsFinalized });
-    });
+        taskEntity.Navigation(t => t.Options).AutoInclude();
 
-    b.Entity<RefreshToken>(entity =>
-    {
-        entity.HasIndex(x => x.TokenHash).IsUnique();
-        entity.Property(x => x.TokenHash).HasMaxLength(256).IsRequired();
-        entity.Property(x => x.UsageCount).HasDefaultValue(0);
-        entity.HasOne(x => x.User)
-            .WithMany()
-            .HasForeignKey(x => x.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-    });
-}
+        b.Entity<UserTaskProgress>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.TaskId }).IsUnique();
+            entity.Property(x => x.PointsEarned).HasDefaultValue(0);
+            entity.Property(x => x.AttemptsUsed).HasDefaultValue(0);
+        });
+
+        b.Entity<TaskAttemptLog>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.TaskId });
+            entity.Property(x => x.ClientAgent).HasMaxLength(1024);
+            entity.Property(x => x.ClientTz).HasMaxLength(128);
+            entity.Property(x => x.IpHash).HasMaxLength(256);
+        });
+
+        b.Entity<UserLevelProgress>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.LevelId }).IsUnique();
+            entity.Property(x => x.Status).HasMaxLength(32);
+        });
+
+        b.Entity<UserSectionProgress>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.SectionId }).IsUnique();
+        });
+
+        b.Entity<LeaderboardEntry>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.Period }).IsUnique();
+            entity.Property(x => x.Period).HasMaxLength(32);
+        });
+
+        b.Entity<ActiveTaskAttempt>(entity =>
+        {
+            entity.HasIndex(x => x.Token).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.TaskId, x.IsFinalized });
+        });
+
+        b.Entity<RefreshToken>(entity =>
+        {
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.Property(x => x.TokenHash).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.UsageCount).HasDefaultValue(0);
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SurveyResponse>(entity =>
+        {
+            entity.HasIndex(x => new { x.SurveyId, x.UserId }).IsUnique();
+            entity.Property(x => x.SurveyId).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.UserId).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.CreatedAt).IsRequired();
+        });
+
+        b.Entity<SurveyAnswer>(entity =>
+        {
+            entity.Property(x => x.QuestionId).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.Value).IsRequired();
+
+            entity.HasOne(x => x.SurveyResponse)
+                .WithMany(r => r.Answers)
+                .HasForeignKey(x => x.SurveyResponseId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

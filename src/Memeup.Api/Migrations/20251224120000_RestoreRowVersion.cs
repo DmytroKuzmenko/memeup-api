@@ -8,25 +8,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Memeup.Api.Migrations
 {
     [DbContext(typeof(MemeupDbContext))]
-    [Migration("20250922134500_RemoveRowVersion")]
-    public partial class RemoveRowVersion : Migration
+    [Migration("20251224120000_RestoreRowVersion")]
+    public partial class RestoreRowVersion : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "RowVersion",
-                table: "Tasks");
-
-            migrationBuilder.DropColumn(
-                name: "RowVersion",
-                table: "Levels");
-
-            migrationBuilder.DropColumn(
-                name: "RowVersion",
-                table: "Sections");
-        }
-
-        protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<byte[]>(
                 name: "RowVersion",
@@ -51,6 +36,21 @@ namespace Memeup.Api.Migrations
                 rowVersion: true,
                 nullable: false,
                 defaultValue: Array.Empty<byte>());
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Tasks");
+
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Levels");
+
+            migrationBuilder.DropColumn(
+                name: "RowVersion",
+                table: "Sections");
         }
     }
 }

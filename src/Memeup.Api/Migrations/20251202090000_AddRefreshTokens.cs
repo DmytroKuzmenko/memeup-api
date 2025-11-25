@@ -1,4 +1,6 @@
 using System;
+using Memeup.Api.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Memeup.Api.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(MemeupDbContext))]
+    [Migration("20251202090000_AddRefreshTokens")]
     public partial class AddRefreshTokens : Migration
     {
         /// <inheritdoc />

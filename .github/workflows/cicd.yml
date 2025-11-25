@@ -62,16 +62,15 @@ jobs:
 
             docker network create traefik_proxy || true
 
-            # Собираем и поднимаем
+            # Собираем и поднимаем (сперва БД, чтобы миграции имели куда стучаться)
             docker compose -f docker-compose.prod.yml down || true
             docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d db
 
-            # Миграции: запускаем API в режиме "только миграции" и выходим
-            # 1) Если в Program.cs включена автоприменение миграций и флаг RUN_MIGRATIONS → используем его:
-            docker compose -f docker-compose.prod.yml run --rm -e RUN_MIGRATIONS=1 api || true
+            # Миграции: запускаем API в режиме "только миграции" и выходим (если упадут — падает пайплайн)
+            docker compose -f docker-compose.prod.yml run --rm -e RUN_MIGRATIONS=1 api
 
-            # Перезапускаем API после миграций (на всякий)
+            # Перезапускаем API после миграций
             docker compose -f docker-compose.prod.yml up -d
 
             # Быстрый smoke-чек

@@ -1,0 +1,10 @@
+{
+  "surveyId": "memeup-demo-2025",
+  "title": "Зворотний зв'язок після демо",
+  "isHidden": false,
+  "questions": [
+    { "id": "q1", "type": "single-choice", "text": "Як вам демо?", "options": ["👍", "👌", "👎"] },
+    { "id": "q2", "type": "scale", "text": "Оцініть презентацію", "scaleMin": 0, "scaleMax": 10 },
+    { "id": "q3", "type": "short-text", "text": "Коментарі" }
+  ]
+}

@@ -12,6 +12,7 @@ using Microsoft.Extensions.FileProviders;
 using HealthChecks.NpgSql;
 using Memeup.Api.Features.Sections;
 using Memeup.Api.Features.Game;
+using Memeup.Api.Features.Surveys;
 
 var builder = WebApplication.CreateBuilder(args);
 var skipRuntimeBootstrapping = string.Equals(builder.Environment.EnvironmentName, "DesignTime", StringComparison.OrdinalIgnoreCase);
@@ -117,6 +118,16 @@ builder.Services.AddCors(o => o.AddPolicy("Frontend",
 
 // ----- Health -----
 builder.Services.AddHealthChecks().AddNpgSql(connectionString!, name: "postgres");
+
+// ----- Surveys -----
+builder.Services.AddSingleton<ISurveyDefinitionProvider>(sp =>
+{
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var logger = sp.GetRequiredService<ILogger<FileSystemSurveyDefinitionProvider>>();
+    var provider = new FileSystemSurveyDefinitionProvider(env, logger);
+    provider.ReloadAsync().GetAwaiter().GetResult();
+    return provider;
+});
 
 // ----- Build -----
 var app = builder.Build();
